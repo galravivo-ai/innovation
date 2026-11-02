@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>נתוני דיגיטל רשות החדשנות</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="hero" id="top">
+  <div class="wrap">
+    <div class="topline">
+      <span class="brand"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>רשות החדשנות<span class="brand-en"> · Israel Innovation Authority</span></span>
+      <img class="rego" src="assets/rego-logo.png" alt="ReGo" width="920" height="389">
+    </div>
+    <span class="eyebrow">דוח דיגיטל · רבעון 3 2026</span>
+    <h1>נתוני דיגיטל, רשות החדשנות</h1>
+    <div class="hstats">
+      <div class="hstat"><span class="hv" id="h-users"></span><span class="hl">מבקרים ייחודיים באתר העברי</span><span class="hs">1.7–29.8.2026</span></div>
+      <div class="hstat"><span class="hv mint" id="h-ai"></span><span class="hl">עלייה בתנועה מכלי AI</span><span class="hs">ממוצע סשנים ליום, מול רבעון 2</span></div>
+      <div class="hstat"><span class="hv" id="h-clicks"></span><span class="hl">קליקים מחיפוש בגוגל</span><span class="hs" id="h-clicks-range"></span></div>
+    </div>
+    <p class="take" id="takeaway"></p>
+  </div>
+</header>
+
+<div class="band">
+  <div class="wrap">
+    <nav class="nav" role="tablist" aria-label="מסכי הדוח">
+      <button type="button" role="tab" data-go="gsc">חיפוש בגוגל</button>
+      <button type="button" role="tab" data-go="sites">אתרי הרשות</button>
+      <button type="button" role="tab" data-go="ai">תנועה מכלי AI</button>
+      <button type="button" role="tab" data-go="pages">דפים נצפים</button>
+      <button type="button" role="tab" data-go="winners">דפי זוכים</button>
+      <button type="button" role="tab" data-go="defs">הגדרות</button>
+    </nav>
+    <div class="period" id="period">
+      <button type="button" class="period-btn" id="period-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="period-pop">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 2h2v2h6V2h2v2h3a1 1 0 0 1 1 1v15a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3V2zm12 8H5v9h14v-9zM5 6v2h14V6H5z"/></svg>
+        <span class="pb-k" id="period-kind">תקופה</span>
+        <span class="pb-v" id="period-label"></span>
+        <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 10l5 5 5-5z"/></svg>
+      </button>
+      <div class="pp-backdrop" id="pp-backdrop" hidden></div>
+      <div class="period-pop" id="period-pop" role="dialog" aria-labelledby="pp-title" hidden>
+        <div class="pp-head"><b id="pp-title">בחירת תקופה</b><button type="button" id="pp-close" aria-label="סגירה">×</button></div>
+        <div class="pp-presets" id="presets"></div>
+        <div class="pp-custom" id="pp-custom">
+          <span class="pp-sub">טווח תאריכים חופשי</span>
+          <div class="pp-dates">
+            <label>מתאריך<input type="date" id="range-start"></label>
+            <label>עד תאריך<input type="date" id="range-end"></label>
+          </div>
+          <button type="button" class="pp-apply" id="pp-apply">הצגת התקופה</button>
+        </div>
+        <p class="pp-note" id="pp-note"></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<main class="wrap body">
+  <div class="note" id="ga-note">
+    <b>הערה על תקופת המדידה:</b> בעקבות תקלה טכנית במערך המדידה באתר הראשי, החל מ־30.8.2026 לא נאספו נתוני Google Analytics. לכן נתוני האתר הראשי (עברית, אנגלית ודפי הזוכים) ברבעון 3 מתייחסים לתקופה <b>1.7.2026–29.8.2026 בלבד (60 ימים)</b>. נתוני אתרי AI ו־BC, ונתוני Google Search Console, מלאים.
+  </div>
+
+  <section class="sec" id="gsc">
+    <div class="sechead"><h2>חיפוש בגוגל</h2><span class="src live" id="gsc-range-label"></span></div>
+    <p>קליקים וחשיפות מתוצאות החיפוש האורגניות של גוגל, לפי התקופה שנבחרה למעלה, בהשוואה לתקופה באורך זהה שקדמה לה. הנתונים נמדדים בצד של גוגל ואינם מושפעים מתקלת המדידה או מבאנר העוגיות. <span id="gsc-coverage"></span></p>
+    <div class="tiles">
+      <div class="tile"><span class="lbl">קליקים מגוגל · כל הדומיין</span><span class="val" id="t-clicks"></span><span class="sub"><span class="chip" id="c-clicks"></span><span id="p-clicks"></span></span></div>
+      <div class="tile"><span class="lbl">חשיפות בגוגל · כל הדומיין</span><span class="val" id="t-impr"></span><span class="sub"><span class="chip" id="c-impr"></span><span id="p-impr"></span></span></div>
+      <div class="tile"><span class="lbl">שיעור הקלקה (CTR)</span><span class="val" id="t-ctr"></span><span class="sub"><span class="chip" id="c-ctr"></span><span id="p-ctr"></span></span></div>
+      <div class="tile"><span class="lbl">מיקום ממוצע בתוצאות</span><span class="val" id="t-pos"></span><span class="sub"><span class="chip" id="c-pos"></span><span id="p-pos"></span></span></div>
+      <div class="tile"><span class="lbl">קליקים מגוגל · אתר אנגלית</span><span class="val" id="t-en"></span><span class="sub"><span class="chip" id="c-en"></span><span id="p-en"></span></span></div>
+    </div>
+    <div class="grid">
+      <div class="card"><h3>קליקים מגוגל · כל הדומיין</h3><span class="cnote" id="main-chart-note"></span><div class="chart" id="main-chart"></div></div>
+      <div class="card"><h3>קליקים מגוגל · אתר אנגלית (/en)</h3><span class="cnote" id="en-chart-note"></span><div class="chart" id="en-chart"></div></div>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <h3>ביטויי החיפוש המובילים</h3><span class="cnote">רבעון 3 2026 (1.7–30.9).</span>
+        <div class="scroll"><table id="gsc-queries"><thead><tr><th>ביטוי</th><th class="num">קליקים</th><th class="num">חשיפות</th><th class="num">CTR</th><th class="num">מיקום</th></tr></thead><tbody></tbody></table></div>
+      </div>
+      <div class="card">
+        <h3>הדפים המובילים בגוגל</h3><span class="cnote">רבעון 3 2026 (1.7–30.9).</span>
+        <div class="scroll"><table id="gsc-pages"><thead><tr><th>דף</th><th class="num">קליקים</th><th class="num">חשיפות</th><th class="num">מיקום</th></tr></thead><tbody></tbody></table></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="sites">
+    <div class="sechead"><h2>אתרי הרשות</h2><span class="src live" id="sites-q-label"></span></div>
+    <p>מבקרים ייחודיים (משתמשים), סשנים וזמן שהייה ממוצע לסשן. ברבעון 3 האתר הראשי נמדד 60 ימים לעומת 91 ברבעון הקודם, ולכן ההשוואה בכמויות אינה ישירה.</p>
+    <div class="tiles" id="site-tiles"></div>
+    <div class="card">
+      <h3>השוואה רבעונית: סשנים ומשתמשים</h3>
+      <span class="cnote">רבעון 3 2026 ורבעון 3 2025 באתר הראשי: 1.7–29.8 בלבד. * אתרי AI ו־BC עלו לאוויר בסוף יולי 2025, ולכן נתוני רבעון 3 2025 שלהם חלקיים.</span>
+      <div class="scroll"><table id="sites-table"><thead><tr><th>אתר</th><th class="num q3">סשנים Q3 26</th><th class="num q3">משתמשים Q3 26</th><th class="num">סשנים Q2 26</th><th class="num">משתמשים Q2 26</th><th class="num">סשנים Q1 26</th><th class="num">משתמשים Q1 26</th><th class="num">סשנים Q3 25</th><th class="num">משתמשים Q3 25</th></tr></thead><tbody></tbody></table></div>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <h3>זמן שהייה ממוצע לסשן</h3><span class="cnote">דקות:שניות. ממוצע השוק נע סביב 1:30–3:00.</span>
+        <div class="scroll"><table id="dur-table"><thead><tr><th>אתר</th><th class="num q3">Q3 26</th><th class="num">Q2 26</th><th class="num">Q1 26</th><th class="num">Q3 25</th></tr></thead><tbody></tbody></table></div>
+      </div>
+      <div class="card">
+        <h3>אתר עברית: משתמשים לפי רבעון</h3><span class="cnote">ב־2025 נכללה תנועת ניוזלטר ולא היה באנר עוגיות, ולכן 2025 אינה בת השוואה ישירה.</span>
+        <div class="chart" id="he-users-chart"></div>
+      </div>
+    </div>
+    <div class="note"><b>על ההשוואה השנתית:</b> ברבעון 3 2025 נכללה בנכס האנליטיקס תנועה מהניוזלטר Tech News Israel (כ־112 אלף סשנים), שכמעט אינה קיימת השנה. בנוסף, בסוף 2025 נוסף לאתר באנר הסכמה לעוגיות, כך שגולשים שלא אישרו עוגיות אינם נספרים באנליטיקס. לפי השוואה לנתוני Google Search Console, מאז הוספת הבאנר האנליטיקס מודד <b>כמחצית עד שני שלישים</b> מהכניסות בפועל. לכן ההשוואה לרבעונים של 2026 משקפת טוב יותר את המגמה.</div>
+  </section>
+
+  <section class="sec" id="ai">
+    <div class="sechead"><h2>תנועה מכלי בינה מלאכותית</h2><span class="src live" id="ai-q-label"></span></div>
+    <p>כל הכניסות לאתר הראשי שמקורן בכלי AI, גם כאלה שגוגל אנליטיקס סיווג כ"הפניה" (Referral). ההשוואה לפי ממוצע יומי, כי תקופת המדידה ברבעון 3 קצרה יותר (60 ימים לעומת 91).</p>
+    <div class="tiles" id="ai-tiles"></div>
+    <div class="card">
+      <h3>כניסות לפי כלי AI</h3>
+      <span class="cnote">עמודי הנחיתה המובילים מכלי AI: מסלול תנופה, עמוד הבית, מסלול Pre-Seed ומסלול מהיר להארכת ה־Runway (Early Growth).</span>
+      <div class="scroll"><table id="ai-table"><thead><tr><th>ערוץ</th><th class="num q3">סשנים Q3</th><th class="num q3">משתמשים Q3</th><th class="num">סשנים Q2</th><th class="num">משתמשים Q2</th><th class="num">שינוי בממוצע יומי</th></tr></thead><tbody></tbody></table></div>
+    </div>
+  </section>
+
+  <section class="sec" id="pages">
+    <div class="sechead"><h2>דפים נצפים ביותר</h2><span class="src">Google Analytics · 1.7–29.8.2026</span></div>
+    <div class="grid">
+      <div class="card"><h3>אתר עברית</h3><div class="scroll"><table id="pages-he"><thead><tr><th class="num">#</th><th>שם הדף</th><th class="num">צפיות</th><th class="num">משתמשים</th></tr></thead><tbody></tbody></table></div></div>
+      <div class="card"><h3>אתר אנגלית</h3><div class="scroll"><table id="pages-en"><thead><tr><th class="num">#</th><th>כתובת</th><th class="num">צפיות</th><th class="num">משתמשים</th></tr></thead><tbody></tbody></table></div></div>
+    </div>
+  </section>
+
+  <section class="sec" id="winners">
+    <div class="sechead"><h2>דפי זוכים</h2><span class="src">Google Analytics · 1.7–29.8.2026</span></div>
+    <div class="card"><div class="scroll"><table id="winners-table"><thead><tr><th>דף</th><th class="num">סשנים</th><th class="num">משתמשים</th></tr></thead><tbody></tbody></table></div></div>
+  </section>
+
+  <section class="sec" id="defs">
+    <div class="sechead"><h2>הגדרות</h2></div>
+    <div class="defs">
+      <div class="card"><h3>יוזר / יוניק (משתמש)</h3><ul>
+        <li>כמה <b>אנשים שונים</b> ביקרו באתר.</li>
+        <li>כל אדם נספר פעם אחת בתקופת הדוח, גם אם נכנס 10 פעמים.</li>
+        <li>עונה על השאלה: לכמה אנשים הגענו.</li>
+        <li>דוגמה: משתמש אחד נכנס בבוקר ובערב = <b>משתמש אחד</b>.</li></ul></div>
+      <div class="card"><h3>סשן (ביקור)</h3><ul>
+        <li>כל כניסה לאתר היא סשן, ואותו משתמש יכול לייצר כמה סשנים.</li>
+        <li>סשן חדש נפתח אם עברו כ־30 דקות ללא פעילות, המשתמש יצא וחזר, או הגיע ממקור תנועה אחר.</li>
+        <li>עונה על השאלה: <b>כמה פעמים</b> ביקרו באתר.</li>
+        <li>דוגמה: משתמש אחד נכנס 3 פעמים ביום = <b>3 סשנים</b>.</li></ul></div>
+      <div class="card"><h3>קליקים וחשיפות (Search Console)</h3><ul>
+        <li><b>חשיפה:</b> הופעה של האתר בתוצאות החיפוש של גוגל.</li>
+        <li><b>קליק:</b> כניסה לאתר מתוצאת חיפוש בגוגל.</li>
+        <li><b>CTR:</b> אחוז החשיפות שהפכו לקליק. <b>מיקום:</b> המיקום הממוצע בתוצאות (נמוך יותר = טוב יותר).</li>
+        <li>נמדד בצד של גוגל, ולכן אינו תלוי בהסכמה לעוגיות.</li></ul></div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap"><span>רשות החדשנות · דוח דיגיטל</span><span>מקורות: Google Analytics, Google Search Console · עודכן 28.10.2026</span></div>
+</footer>
+
+<button type="button" class="ask-btn" id="ask-btn" hidden>
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9L12 2zm7 11l.9 2.6 2.6.9-2.6.9L19 21l-.9-2.6-2.6-.9 2.6-.9L19 13z"/></svg>
+  שאלו את הנתונים
+</button>
+<aside class="chat" id="chat" hidden aria-label="סוכן נתונים">
+  <div class="chat-head">
+    <div><h3>סוכן הנתונים</h3><p>שאלו בשפה חופשית על התנועה לאתרים, חיפוש בגוגל ותנועה מכלי AI.</p></div>
+    <button type="button" id="chat-close" aria-label="סגירה">×</button>
+  </div>
+  <div class="chat-log" id="chat-log" aria-live="polite"></div>
+  <div class="chat-form">
+    <textarea id="chat-input" rows="1" placeholder="למשל: כמה קליקים מגוגל היו באוגוסט 2026?" aria-label="שאלה לסוכן"></textarea>
+    <button type="button" id="chat-send">שליחה</button>
+  </div>
+</aside>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
