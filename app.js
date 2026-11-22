@@ -18,16 +18,28 @@ const GA_PAGES = {
   en: [["/en/calls_for_proposal/",423,272],["/en/contact-us/",357,263],["/en/press_release/",310,257],["/en/programs/",344,233],["/en/programs/startup-fund/",298,231],["/en/the-israel-innovation-authority/",300,212],["/en/blog/",150,203],["/en/press_release/israeli-high-tech-report-2026/",278,200]],
 };
 const GA_WINNERS = [["דף זוכים 2025",945,676],["דף זוכים 2025 באנגלית",194,114],["דף זוכים 2026",1953,1530],["דף זוכים 2026 באנגלית",226,180]];
-const GSC_QUERIES = [
+// The daily refresh (scripts/refresh.mjs) writes fresh top lists, their date range and the update time into data.js;
+// the lists below are the Q3 2026 fallback for a data.js that has none.
+const D = window.IIA_DATA;
+const pageName = (u) => {
+  try {
+    const x = new URL(u), path = decodeURIComponent(x.pathname);
+    if (x.hostname.startsWith('my.')) return 'אזור אישי' + (path === '/' ? '' : ' · ' + path);
+    return path === '/' ? 'עמוד הבית' : path === '/en/' ? '/en/ (עמוד הבית באנגלית)' : path;
+  } catch (e) { return String(u); }
+};
+const GSC_QUERIES = D.queries || [
   ["רשות החדשנות אזור אישי",2475,2851,86.8,2.5],["רשות החדשנות",2288,15559,14.7,2.3],["רשות החדשנות דרושים",837,1415,59.2,1.7],["israel innovation authority",631,1960,32.2,3.2],
   ["הרשות לחדשנות אזור אישי",499,582,85.7,1.6],["הרשות לחדשנות",480,4111,11.7,7.8],["iia",300,886,33.9,2.3],["רשות החדשנות קריירה",157,240,65.4,3.9],
   ["נוהל 200-02",155,240,64.6,4.5],["תנופה",145,11076,1.3,4.9],["חברת תחבורה חכמה",128,1152,11.1,3.1],["דרושים רשות החדשנות",122,162,75.3,5.7],
 ];
-const GSC_PAGES = [
+const GSC_PAGES = D.pages ? D.pages.map(([u, ...rest]) => [pageName(u), ...rest]) : [
   ["עמוד הבית",3280,59580,8.8],["אזור אישי (my.innovationisrael.org.il)",1975,10095,2.6],["/job/ (דרושים)",1567,22966,1.7],["/en/ (עמוד הבית באנגלית)",1081,38915,8.8],
   ["האזור האישי באתר רשות החדשנות",682,5633,4.6],["מסלול תנופה – קרן ההזנק",646,19380,5.6],["/fast-track/ (מסלול מהיר)",288,3754,10],["אזור אישי – כניסה להודעות",287,2136,3.4],
   ["נוהל ניהול מערכת הכספים והגשת דוחות",194,933,23.2],["/event_series/barevents2026/ (חדשנות על הבר)",176,353,5.4],
 ];
+const TOP_RANGE = D.topRange || ['2026-07-01', '2026-09-30'];
+const UPDATED = D.updated ? D.updated.slice(0, 10) : '2026-10-28';
 const parseCsv = (id) => window.IIA_DATA[id].trim().split('\n').map((l) => { const [d, c, i, p] = l.split(','); return { d, c: +c, i: +i, p: +p }; });
 const GSC = { main: parseCsv('csv-main'), en: parseCsv('csv-en') };
 const COVER = { main: [GSC.main[0].d, GSC.main[GSC.main.length - 1].d], en: [GSC.en[0].d, GSC.en[GSC.en.length - 1].d] };
@@ -188,6 +200,10 @@ function renderStatic() {
     { cls: 'txt', f: (r) => r[0] }, { cls: 'num bar', w: (r) => (r[1] / maxP * 100).toFixed(1) + '%', f: (r) => fmt(r[1]) },
     { cls: 'num', f: (r) => fmt(r[2]) }, { cls: 'num', f: (r) => r[3].toFixed(1) },
   ]);
+  const topText = heDate(TOP_RANGE[0]) + '–' + heDate(TOP_RANGE[1]) + (D.topRange ? ' (90 הימים האחרונים עם נתונים).' : ' (רבעון 3 2026).');
+  $('top-q-note').textContent = topText;
+  $('top-p-note').textContent = topText;
+  $('updated').textContent = heDate(UPDATED);
 }
 // quarter chosen on the Analytics tabs (Google Analytics data exists per quarter only)
 const GA_Q = { sites: QS, ai: ['Q3 2026', 'Q2 2026'], pages: ['Q3 2026'], winners: ['Q3 2026'] };
@@ -392,12 +408,12 @@ function context() {
     'אתה "סוכן הנתונים" של דוח הדיגיטל של רשות החדשנות (innovationisrael.org.il). אתה עונה למי שצופה בדשבורד, בעברית, בשפה פשוטה וברורה.',
     'כללים: ענה רק על סמך הנתונים שלהלן ותוצאות הכלים. אל תמציא מספרים. אם אין נתון, אמור זאת ואמור מה כן קיים. ציין תמיד את התקופה ואת המקור (Google Analytics או Google Search Console). הדגש מספרים חשובים ב־**כוכביות**. השתמש ברשימות עם "- " כשזה עוזר. היה תמציתי: עד כ־150 מילים, אלא אם התבקש פירוט.',
     'הערות מתודולוגיות: (1) נתוני Google Analytics של האתר הראשי ברבעון 3 2026 הם ל־1.7–29.8 בלבד (60 ימים) עקב תקלת מדידה; השוואות AI נעשות לפי ממוצע יומי (60 מול 91 ימים). (2) מסוף 2025 באנר עוגיות גורם לאנליטיקס למדוד כמחצית עד שני שלישים מהכניסות. (3) ברבעון 3 2025 נכללה תנועת ניוזלטר (כ־112 אלף סשנים), ולכן 2025 אינה בת השוואה ישירה. (4) Search Console נמדד בצד גוגל ומלא לכל התקופות. (5) מיקום ממוצע נמוך יותר הוא טוב יותר.',
-    'היום: 28.10.2026. התקופה שהצופה בחר כרגע בדשבורד: ' + state.start + ' עד ' + state.end + '.',
+    'היום: ' + heDate(iso(new Date())) + '. הנתונים עודכנו לאחרונה ב־' + heDate(UPDATED) + '. התקופה שהצופה בחר כרגע בדשבורד: ' + state.start + ' עד ' + state.end + '.',
     'כיסוי Search Console יומי: כל הדומיין ' + COVER.main.join(' עד ') + '; אתר האנגלית (/en) ' + COVER.en.join(' עד ') + '. ' + (toolsOk ? 'לחישוב מדויק של כל טווח תאריכים השתמש בכלים gsc_summary ו־gsc_series. אם הצופה מבקש להציג תקופה בדשבורד, השתמש ב־set_dashboard_period.' : 'לחישוב טווחים השתמש בסיכומים החודשיים שלהלן.'),
     'Search Console חודשי, כל הדומיין: ' + JSON.stringify(monthly('main')),
     'Search Console חודשי, אתר אנגלית: ' + JSON.stringify(monthly('en')),
-    'Search Console, ביטויים מובילים ברבעון 3 2026 [ביטוי, קליקים, חשיפות, CTR%, מיקום]: ' + JSON.stringify(GSC_QUERIES),
-    'Search Console, דפים מובילים ברבעון 3 2026 [דף, קליקים, חשיפות, מיקום]: ' + JSON.stringify(GSC_PAGES),
+    'Search Console, ביטויים מובילים ' + TOP_RANGE.join(' עד ') + ' [ביטוי, קליקים, חשיפות, CTR%, מיקום]: ' + JSON.stringify(GSC_QUERIES),
+    'Search Console, דפים מובילים ' + TOP_RANGE.join(' עד ') + ' [דף, קליקים, חשיפות, מיקום]: ' + JSON.stringify(GSC_PAGES),
     'Google Analytics לפי אתר ורבעון (s=סשנים, u=משתמשים, d=זמן שהייה ממוצע לסשן בשניות): ' + JSON.stringify(GA_SITES),
     'Google Analytics, כניסות מכלי AI לאתר הראשי (s3/u3 = רבעון 3 2026, 1.7–29.8, 60 ימים; s2/u2 = רבעון 2 2026, 91 ימים): ' + JSON.stringify(GA_AI) + '. עמודי נחיתה מובילים מ־AI: מסלול תנופה, עמוד הבית, Pre-Seed, מסלול מהיר להארכת ה־Runway.',
     'Google Analytics, דפים נצפים 1.7–29.8.2026 [דף, צפיות, משתמשים]: עברית ' + JSON.stringify(GA_PAGES.he) + '; אנגלית ' + JSON.stringify(GA_PAGES.en),

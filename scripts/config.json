@@ -1,0 +1,9 @@
+{
+  "gsc": {
+    "site": "sc-domain:innovationisrael.org.il",
+    "start": "2025-07-01",
+    "lagDays": 2,
+    "topDays": 90,
+    "enPathContains": "innovationisrael.org.il/en/"
+  }
+}
