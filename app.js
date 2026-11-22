@@ -202,6 +202,16 @@ const lenOf = (id) => { const p = period(id); return p ? daysBetween(p.start, p.
 const stat = (site, id) => (M.sites[site] && M.sites[site].stats[id]) || null;
 const has = (site, id) => !!stat(site, id);
 const partial = (site, id) => { const s = stat(site, id); return !!s && s.days < lenOf(id) * 0.9; };
+// "not measured": a period whose sessions are under a tenth of the site's usual pace, i.e. the tracking tag was not
+// working (e.g. the English pages since September 2026); its numbers would mislead, so the page shows "לא נמדד" instead
+const baseline = {};
+const usualDaily = (k) => {
+  if (baseline[k] != null) return baseline[k];
+  const months = M.periods.filter((p) => p.type === 'm' && has(k, p.id)).map((p) => stat(k, p.id).s / lenOf(p.id)).sort((a, b) => a - b);
+  return (baseline[k] = months.length ? months[Math.floor(months.length / 2)] : 0);
+};
+const unmeasured = (k, id) => { const s = stat(k, id); return !s || (usualDaily(k) > 0 && s.s < usualDaily(k) * lenOf(id) * 0.1); };
+const NOT_MEASURED = 'לא נמדד';
 const prevOf = (id) => { const p = period(id); if (!p) return null; const older = M.periods.filter((x) => x.type === p.type && x.start < p.start); return older.length ? older[0].id : null; };
 const quarterEnd = (id) => iso(new Date(Date.UTC(+id.slice(3), +id.slice(1, 2) * 3, 0)));
 // default: the last quarter that has ended (a quarter in progress can still be picked)
@@ -225,7 +235,7 @@ const chipEl = (v) => { const c = el('span', 'chip'); setChip(c, v); return c; }
 function renderStatic() {
   // headline figures and summary follow the chosen site and the default period (the last quarter that has ended)
   const dq = DEFAULT_Q, pq = prevOf(dq), dp = period(dq), pp = pq && period(pq);
-  const cur = stat(site, dq), prv = pq && stat(site, pq), ac = aiChange(dq);
+  const cur = unmeasured(site, dq) ? null : stat(site, dq), prv = pq && !unmeasured(site, pq) ? stat(site, pq) : null, ac = cur && prv ? aiChange(dq) : null;
   $('h-users').textContent = cur ? fmt(cur.u) : '—';
   $('h-users-lbl').textContent = 'מבקרים ייחודיים ' + SITE_IN[site];
   $('h-users-range').textContent = qLabel(dq) + (M.live ? '' : ' · 1.7–29.8');
@@ -240,7 +250,7 @@ function renderStatic() {
   }
   $('takeaway').replaceChildren(...parts.map((p) => typeof p === 'string' ? document.createTextNode(p) : el('b', '', p[0])));
   if (M.live) {
-    $('ga-note').replaceChildren(el('b', '', 'הערה על המדידה: '), document.createTextNode('בעקבות תקלה טכנית במערך המדידה באתר הראשי, מ־30.8.2026 נאספו נתוני Google Analytics חלקיים בלבד (בעיקר בספטמבר 2026), ולכן נתוני האתר הראשי לתקופה זו נמוכים מהתנועה בפועל. נתוני Google Search Console מלאים. הנתונים מתעדכנים אוטומטית כל בוקר.'));
+    $('ga-note').replaceChildren(el('b', '', 'הערה על המדידה: '), document.createTextNode('בעקבות תקלה טכנית במערך המדידה באתר הראשי, מ־30.8.2026 נאספו נתוני Google Analytics חלקיים בלבד (בעיקר בספטמבר 2026), ולכן נתוני האתר הראשי לתקופה זו נמוכים מהתנועה בפועל. באתר האנגלי (/en/) תג המדידה של Google Analytics לא פועל מאז ספטמבר 2026, ולכן תקופות אלה מסומנות "לא נמדד". נתוני Google Search Console מלאים לשני האתרים. הנתונים מתעדכנים אוטומטית כל בוקר.'));
     $('sites-table-note').textContent = '* נמדד רק בחלק מימי התקופה (למשל בתקופת התקלה).';
   }
 
@@ -286,17 +296,19 @@ function renderSites() {
   $('sites-title').textContent = 'תנועה ל' + SITE_NAME[site];
   $('users-chart-title').textContent = SITE_NAME[site] + ': משתמשים לפי רבעון';
   $('sites-q-label').textContent = 'Google Analytics · ' + qLabel(q) + (!M.live && (q === 'Q3 2026' || q === 'Q3 2025') ? ' · 1.7–29.8' : coverNote(site, q));
-  const cur = stat(site, q), prv = pq && stat(site, pq);
+  const cur = unmeasured(site, q) ? null : stat(site, q), prv = pq && !unmeasured(site, pq) ? stat(site, pq) : null;
   const prev = (v) => v != null ? [prevWord(q), pv(v)] : ['אין נתוני תקופה קודמת'];
   const st = $('site-tiles'); st.replaceChildren();
-  if (cur) {
+  if (!cur) {
+    for (const l of ['מבקרים ייחודיים', 'סשנים', 'זמן שהייה לסשן', 'סשנים למשתמש']) tile(st, l, NOT_MEASURED, ['Google Analytics לא מדד את האתר בתקופה זו']);
+  } else {
     tile(st, 'מבקרים ייחודיים', fmt(cur.u), prev(prv ? fmt(prv.u) : null));
     tile(st, 'סשנים', fmt(cur.s), prev(prv ? fmt(prv.s) : null));
     tile(st, 'זמן שהייה לסשן', mmss(cur.d), [...prev(prv ? mmss(prv.d) : null), ' · ממוצע שוק 1:30–3:00']);
     tile(st, 'סשנים למשתמש', cur.u ? (cur.s / cur.u).toFixed(2) : '—', prev(prv && prv.u ? (prv.s / prv.u).toFixed(2) : null));
   }
   // quarters across, measures down
-  const cell = (qq, f) => !has(site, qq) ? '—' : (f === 'd' ? mmss(stat(site, qq).d) : fmt(stat(site, qq)[f])) + (partial(site, qq) ? '*' : '');
+  const cell = (qq, f) => !has(site, qq) ? '—' : unmeasured(site, qq) ? NOT_MEASURED : (f === 'd' ? mmss(stat(site, qq).d) : fmt(stat(site, qq)[f])) + (partial(site, qq) ? '*' : '');
   fillTable('sites-table', [['s', 'סשנים'], ['u', 'מבקרים ייחודיים'], ['d', 'זמן שהייה לסשן']], [
     { f: (m) => m[1] }, ...QS.map((qq) => ({ cls: qq === q ? 'num q3' : 'num', f: (m) => cell(qq, m[0]) })),
   ]);
@@ -305,17 +317,19 @@ function renderSites() {
   const months = M.periods.filter((p) => p.type === 'm' && has(site, p.id)).slice(0, 6).map((p) => p.id);
   fillTable('dur-table', months, [
     { f: (m) => qLabel(m) + (partial(site, m) ? '*' : '') },
-    { cls: (m) => 'num' + (m === q ? ' q3' : ''), f: (m) => fmt(stat(site, m).s) },
-    { cls: (m) => 'num' + (m === q ? ' q3' : ''), f: (m) => fmt(stat(site, m).u) },
-    { cls: (m) => 'num' + (m === q ? ' q3' : ''), f: (m) => mmss(stat(site, m).d) },
+    { cls: (m) => 'num' + (m === q ? ' q3' : ''), f: (m) => unmeasured(site, m) ? NOT_MEASURED : fmt(stat(site, m).s) },
+    { cls: (m) => 'num' + (m === q ? ' q3' : ''), f: (m) => unmeasured(site, m) ? '' : fmt(stat(site, m).u) },
+    { cls: (m) => 'num' + (m === q ? ' q3' : ''), f: (m) => unmeasured(site, m) ? '' : mmss(stat(site, m).d) },
   ]);
   setHead('dur-table', ['חודש', 'סשנים', 'מבקרים', 'זמן שהייה'], () => false);
   $('dur-table').closest('.card').hidden = !months.length;
 }
 function renderAi() {
   const q = pick('ai'), pq = prevOf(q) && aiOf(prevOf(q)) ? prevOf(q) : null;
-  const a = aiOf(q), b = pq ? aiOf(pq) : null, he = stat(site, q), heP = pq ? stat(site, pq) : null, ch = aiChange(q);
+  const off = unmeasured(site, q);
+  const a = off ? null : aiOf(q), b = pq && !unmeasured(site, pq) ? aiOf(pq) : null, he = stat(site, q), heP = pq ? stat(site, pq) : null, ch = b ? aiChange(q) : null;
   $('ai-intro').textContent = 'כל הכניסות ל' + SITE_NAME[site] + ' שמקורן בכלי AI';
+  $('ai-empty').textContent = off ? 'Google Analytics לא מדד את ' + SITE_NAME[site] + ' ב' + qLabel(q) + ', ולכן אין נתוני תנועה מכלי AI לתקופה זו. בחרו תקופה אחרת.' : 'לאתר זה אין נתוני תנועה מכלי AI בתקופה שנבחרה.';
   $('ai-empty').hidden = !!a;
   $('ai-tiles').hidden = !a;
   $('ai-table').closest('.card').hidden = !a;
@@ -346,8 +360,9 @@ function renderPages() {
   $('pages-q-label').textContent = 'Google Analytics · ' + SITE_NAME[site] + ' · ' + qLabel(q) + (!M.live && q === 'Q3 2026' ? ' · 1.7–29.8' : coverNote(site, q));
   $('pages-he-card').hidden = site !== 'he';
   $('pages-en-card').hidden = site !== 'en';
+  if (unmeasured(site, q)) $('pages-q-label').textContent += ' · ' + NOT_MEASURED;
   for (const lang of [site]) {
-    const rows = (M.pages[lang] && M.pages[lang][q]) || [], maxU = d3.max(rows, (r) => r[2]) || 1;
+    const rows = unmeasured(site, q) ? [] : (M.pages[lang] && M.pages[lang][q]) || [], maxU = d3.max(rows, (r) => r[2]) || 1;
     fillTable('pages-' + lang, rows.map((r, i) => [i + 1, ...r]), [
       { cls: 'num rank', f: (r) => r[0] }, { cls: 'txt', f: (r) => r[1] }, { cls: 'num', f: (r) => fmt(r[2]) },
       { cls: 'num bar', w: (r) => (r[3] / maxU * 100).toFixed(1) + '%', f: (r) => fmt(r[3]) },
@@ -355,7 +370,7 @@ function renderPages() {
   }
 }
 function drawHeUsers() {
-  const rows = QS.filter((q) => has(site, q)).reverse().map((q) => ({ q, ...stat(site, q) }));
+  const rows = QS.filter((q) => has(site, q) && !unmeasured(site, q)).reverse().map((q) => ({ q, ...stat(site, q) }));
   barChart($('he-users-chart'), rows, { x: (d) => d.q, y: (d) => d.u, label: (d) => qShort(d.q), tipLabel: (d) => qLabel(d.q), hi: (d) => d.q === gaQ, fmtY: (v) => d3.format('~s')(v) });
 }
 
