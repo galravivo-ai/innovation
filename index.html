@@ -99,7 +99,7 @@
 
   <section class="sec" id="sites">
     <div class="sechead"><h2>אתרי הרשות</h2><span class="src live" id="sites-q-label"></span></div>
-    <p>מבקרים ייחודיים (משתמשים), סשנים וזמן שהייה ממוצע לסשן. ברבעון 3 האתר הראשי נמדד 60 ימים לעומת 91 ברבעון הקודם, ולכן ההשוואה בכמויות אינה ישירה.</p>
+    <p>מבקרים ייחודיים (משתמשים), סשנים וזמן שהייה ממוצע לסשן, לפי הרבעון או החודש שנבחרו, בהשוואה לתקופה הקודמת (רבעון לרבעון, חודש לחודש).</p>
     <div class="tiles" id="site-tiles"></div>
     <div class="card">
       <h3>השוואה רבעונית: סשנים ומשתמשים</h3>
@@ -121,7 +121,7 @@
 
   <section class="sec" id="ai">
     <div class="sechead"><h2>תנועה מכלי בינה מלאכותית</h2><span class="src live" id="ai-q-label"></span></div>
-    <p>כל הכניסות לאתר הראשי שמקורן בכלי AI, גם כאלה שגוגל אנליטיקס סיווג כ"הפניה" (Referral). ההשוואה לפי ממוצע יומי, כי תקופת המדידה ברבעון 3 קצרה יותר (60 ימים לעומת 91).</p>
+    <p>כל הכניסות לאתר הראשי שמקורן בכלי AI, גם כאלה שגוגל אנליטיקס סיווג כ"הפניה" (Referral). ההשוואה לפי ממוצע יומי, כי מספר ימי המדידה משתנה בין תקופות.</p>
     <div class="tiles" id="ai-tiles"></div>
     <div class="card">
       <h3>כניסות לפי כלי AI</h3>
@@ -186,7 +186,7 @@
 </aside>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
-<script src="data.js"></script>
+<script>/* the data file changes every morning: ask for it by the hour so browsers do not show yesterday's copy */ document.write('<script src="data.js?h=' + Math.floor(Date.now() / 36e5) + '"><\/script>');</script>
 <script src="app.js"></script>
 </body>
 </html>
