@@ -52,6 +52,7 @@ export default {
       system,
       messages: messages.map((m) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content })),
       output_config: { effort: 'low' },
+      cache_control: { type: 'ephemeral' }, // the long data context repeats in every step of a question
       fallbacks: 'default',
     };
     if (Array.isArray(tools) && tools.length) {
