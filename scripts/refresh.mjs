@@ -45,6 +45,8 @@ async function gsc(body) {
 }
 const end = daysAgo(config.gsc.lagDays ?? 2);
 const enFilter = [{ filters: [{ dimension: 'page', operator: 'contains', expression: config.gsc.enPathContains }] }];
+// the Hebrew site = the whole domain except the English pages (the personal area my.* is part of it)
+const heFilter = [{ filters: [{ dimension: 'page', operator: 'notContains', expression: config.gsc.enPathContains }] }];
 
 async function dailyCsv(filterGroups) {
   const rows = await gsc({ startDate: config.gsc.start, endDate: end, dimensions: ['date'], rowLimit: 25000, dimensionFilterGroups: filterGroups });
@@ -55,13 +57,20 @@ async function dailyCsv(filterGroups) {
 }
 const csvMain = await dailyCsv(undefined);
 const csvEn = await dailyCsv(enFilter);
+const csvHe = await dailyCsv(heFilter);
 if (!csvMain) throw new Error('Search Console returned no daily rows for the whole domain; data.js was left as it was.');
 
 const topStart = daysAgo((config.gsc.lagDays ?? 2) + (config.gsc.topDays ?? 90) - 1);
-const queries = (await gsc({ startDate: topStart, endDate: end, dimensions: ['query'], rowLimit: 12 }))
+const topQueries = async (filterGroups) => (await gsc({ startDate: topStart, endDate: end, dimensions: ['query'], rowLimit: 12, dimensionFilterGroups: filterGroups }))
   .map((r) => [r.keys[0], Math.round(r.clicks), Math.round(r.impressions), +(r.ctr * 100).toFixed(1), +r.position.toFixed(1)]);
-const pages = (await gsc({ startDate: topStart, endDate: end, dimensions: ['page'], rowLimit: 10 }))
+const topPages = async (filterGroups) => (await gsc({ startDate: topStart, endDate: end, dimensions: ['page'], rowLimit: 10, dimensionFilterGroups: filterGroups }))
   .map((r) => [r.keys[0], Math.round(r.clicks), Math.round(r.impressions), +r.position.toFixed(1)]);
+const queries = await topQueries(undefined);
+const pages = await topPages(undefined);
+const topBySite = {
+  he: { queries: await topQueries(heFilter), pages: await topPages(heFilter) },
+  en: { queries: await topQueries(enFilter), pages: await topPages(enFilter) },
+};
 
 // ---------- Google Analytics 4 ----------
 // Users are not additive across days, so every period (quarter and month) is its own report.
@@ -129,16 +138,24 @@ async function gaData() {
   const aiFilter = { filter: { fieldName: 'sessionSource', stringFilter: { matchType: 'FULL_REGEXP', value: cfg.aiSourcePattern, caseSensitive: false } } };
   const channel = (src) => /chatgpt|openai/i.test(src) ? 'ChatGPT' : /gemini|bard/i.test(src) ? 'Gemini' : /perplexity/i.test(src) ? 'Perplexity'
     : /claude|anthropic/i.test(src) ? 'Claude' : /copilot/i.test(src) ? 'Copilot' : /deepseek/i.test(src) ? 'DeepSeek' : 'אחר';
-  let ai = null;
-  try {
-    ai = await perPeriod(aiSite.property, { metrics: [{ name: 'sessions' }, { name: 'totalUsers' }], dimensionFilter: aiFilter }, (o, pid, dims, m) => {
+  // AI-tool traffic for each site: the AI-source filter, and for a filtered site (English) its page filter as well
+  async function aiTraffic(s) {
+    const own = siteFilter(s).dimensionFilter;
+    const filter = own ? { andGroup: { expressions: [aiFilter, own] } } : aiFilter;
+    const out = await perPeriod(s.property, { metrics: [{ name: 'sessions' }, { name: 'totalUsers' }], dimensionFilter: filter }, (o, pid, dims, m) => {
       o[pid] = { s: num(m[0]), u: num(m[1]), channels: {} };
     });
-    await perPeriod(aiSite.property, { dimensions: [{ name: 'sessionSource' }], metrics: [{ name: 'sessions' }, { name: 'totalUsers' }], dimensionFilter: aiFilter, limit: 500 }, (o, pid, dims, m) => {
-      const c = ai[pid]?.channels; if (!c) return;
+    await perPeriod(s.property, { dimensions: [{ name: 'sessionSource' }], metrics: [{ name: 'sessions' }, { name: 'totalUsers' }], dimensionFilter: filter, limit: 500 }, (o, pid, dims, m) => {
+      const c = out[pid]?.channels; if (!c) return;
       const k = channel(dims[0]); c[k] = c[k] || { s: 0, u: 0 }; c[k].s += num(m[0]); c[k].u += num(m[1]);
     });
-  } catch (e) { console.log(`GA: AI traffic skipped: ${e.message}`); ai = null; }
+    return out;
+  }
+  const aiBySite = {};
+  for (const s of cfg.sites) {
+    try { aiBySite[s.key] = await aiTraffic(s); } catch (e) { console.log(`GA: AI traffic for ${s.name} skipped: ${e.message}`); }
+  }
+  const ai = aiBySite[aiSite.key] || null;
 
   const pages = {};
   for (const [key, dim] of Object.entries(cfg.topPages || {})) {
@@ -152,7 +169,7 @@ async function gaData() {
     } catch (e) { console.log(`GA: top pages for ${s.name} skipped: ${e.message}`); delete pages[key]; }
   }
   console.log(`GA: ${sites.length} sites, ${periods.length} periods, AI ${ai ? 'ok' : 'missing'}, top pages for ${Object.keys(pages).join(', ') || 'none'}.`);
-  return { end: gaEnd, periods, sites, ai, pages };
+  return { end: gaEnd, periods, sites, ai, aiBySite, pages };
 }
 let ga = null;
 if (config.ga?.sites?.length) {
@@ -162,15 +179,17 @@ if (config.ga?.sites?.length) {
 // ---------- write data.js ----------
 const out = `// Written by scripts/refresh.mjs. Do not edit by hand: the daily refresh replaces this file.
 // Google Search Console, daily: date,clicks,impressions,avg position
-// csv-main = ${config.gsc.site} (whole domain), csv-en = pages containing "${config.gsc.enPathContains}"
+// csv-main = ${config.gsc.site} (whole domain), csv-en = pages containing "${config.gsc.enPathContains}", csv-he = all other pages
 window.IIA_DATA = {
 updated: ${JSON.stringify(new Date().toISOString())},
 topRange: ${JSON.stringify([topStart, end])},
 queries: ${JSON.stringify(queries)},
 pages: ${JSON.stringify(pages)},
+topBySite: ${JSON.stringify(topBySite)},
 ga: ${JSON.stringify(ga)},
 'csv-main': \`${csvMain}\`,
 'csv-en': \`${csvEn}\`,
+'csv-he': \`${csvHe}\`,
 };
 `;
 await writeFile(DATA_FILE, out);
