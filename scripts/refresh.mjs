@@ -110,12 +110,14 @@ async function gaData() {
     return out;
   }
 
+  // a site can be a whole property, or the part of a property that matches a filter (e.g. the English pages)
+  const siteFilter = (s) => s.filter ? { dimensionFilter: { filter: { fieldName: s.filter.fieldName, stringFilter: { matchType: s.filter.matchType, value: s.filter.value } } } } : {};
   const sites = [];
   for (const s of cfg.sites) {
     try {
-      const daily = await report(s.property, { dateRanges: [{ startDate: cfg.start, endDate: gaEnd }], dimensions: [{ name: 'date' }], metrics: [{ name: 'sessions' }], limit: 2000 });
+      const daily = await report(s.property, { dateRanges: [{ startDate: cfg.start, endDate: gaEnd }], dimensions: [{ name: 'date' }], metrics: [{ name: 'sessions' }], limit: 2000, ...siteFilter(s) });
       const active = daily.filter((r) => num(r.metricValues[0]) > 0).map((r) => r.dimensionValues[0].value.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3'));
-      const stats = await perPeriod(s.property, { metrics: [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'averageSessionDuration' }] }, (o, pid, dims, m) => {
+      const stats = await perPeriod(s.property, { metrics: [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'averageSessionDuration' }], ...siteFilter(s) }, (o, pid, dims, m) => {
         o[pid] = { s: num(m[0]), u: num(m[1]), d: Math.round(num(m[2])) };
       });
       for (const p of periods) if (stats[p.id]) stats[p.id].days = active.filter((d) => d >= p.start && d <= p.end).length;
@@ -144,7 +146,7 @@ async function gaData() {
     pages[key] = {};
     try {
       for (const p of periods) {
-        const rows = await report(s.property, { dateRanges: [{ startDate: p.start, endDate: p.end }], dimensions: [{ name: dim }], metrics: [{ name: 'screenPageViews' }, { name: 'totalUsers' }], orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }], limit: 10 });
+        const rows = await report(s.property, { dateRanges: [{ startDate: p.start, endDate: p.end }], dimensions: [{ name: dim }], metrics: [{ name: 'screenPageViews' }, { name: 'totalUsers' }], orderBys: [{ metric: { metricName: 'totalUsers' }, desc: true }], limit: 10, ...siteFilter(s) });
         pages[key][p.id] = rows.map((r) => [r.dimensionValues[0].value, num(r.metricValues[0]), num(r.metricValues[1])]);
       }
     } catch (e) { console.log(`GA: top pages for ${s.name} skipped: ${e.message}`); delete pages[key]; }
