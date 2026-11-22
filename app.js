@@ -535,7 +535,47 @@ new ResizeObserver(() => { const w = document.body.clientWidth; if (w !== rw) { 
 const chat = $('chat'), log = $('chat-log'), input = $('chat-input'), sendBtn = $('chat-send'), askBtn = $('ask-btn');
 const SUGGEST = ['מה המגמה בקליקים מגוגל בחצי השנה האחרונה?', 'איזה כלי AI הביא הכי הרבה תנועה ואיך הוא השתנה?', 'השווה את ספטמבר לאוגוסט 2026 בחיפוש בגוגל', 'תן לי 3 תובנות עיקריות מהרבעון לדיווח להנהלה'];
 const turns = [];
-let sample = null, toolsOk = false, ctl = null, busy = false;
+let sample = null, toolsOk = false, ctl = null, busy = false, viaProxy = false;
+// Outside claude.ai the chat goes through a small Cloudflare Worker (worker/chat-proxy.js) that holds the API key.
+const CHAT_PROXY = '';
+
+const fail = (code, text) => Object.assign(new Error(code), { code, text });
+async function proxySample(msgs, { tools, onText, signal } = {}) {
+  const system = msgs[0].content;
+  const convo = msgs.slice(1).map((m) => ({ role: m.role, content: m.content }));
+  const defs = tools ? tools.map((t) => ({ name: t.name, description: t.description, input_schema: t.inputSchema })) : undefined;
+  let text = '';
+  for (let step = 0; step < 6; step++) {
+    let r;
+    try {
+      r = await fetch(CHAT_PROXY, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ system, messages: convo, tools: defs }), signal });
+    } catch (e) { throw fail(e && e.name === 'AbortError' ? 'cancelled' : 'network', text); }
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw fail(data.error || 'upstream', text);
+    if (data.stop_reason === 'refusal') throw fail('refused', text);
+    const content = data.content || [];
+    const t = content.filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
+    if (t) { text = t; onText && onText({ text }); }
+    convo.push({ role: 'assistant', content });
+    const uses = content.filter((b) => b.type === 'tool_use');
+    if (data.stop_reason !== 'tool_use' || !uses.length) {
+      if (!text) throw fail('empty_completion', text);
+      return { text, truncated: data.stop_reason === 'max_tokens' };
+    }
+    convo.push({
+      role: 'user',
+      content: uses.map((u) => {
+        const tool = (tools || []).find((x) => x.name === u.name);
+        try {
+          if (!tool) throw new Error('Unknown tool ' + u.name);
+          return { type: 'tool_result', tool_use_id: u.id, content: JSON.stringify(tool.execute(u.input || {})) };
+        } catch (err) { return { type: 'tool_result', tool_use_id: u.id, content: String((err && err.message) || err), is_error: true }; }
+      }),
+    });
+  }
+  if (!text) throw fail('empty_completion', text);
+  return { text, truncated: true };
+}
 
 const monthly = (scope) => series(scope, COVER[scope][0], COVER[scope][1], 'month').map((r) => ({ month: r.period.slice(0, 7), clicks: r.clicks, impressions: r.impressions }));
 function context() {
@@ -607,6 +647,7 @@ const ERR = {
   refused: 'לא ניתן לענות על השאלה הזו. נסו לנסח אותה אחרת.',
   empty_completion: 'לא התקבלה תשובה. נסו לפשט את השאלה.',
   prompt_too_large: 'השיחה ארוכה מדי. רעננו את הדף כדי להתחיל שיחה חדשה.',
+  network: 'אין חיבור לשרת הסוכן. בדקו את החיבור לאינטרנט ונסו שוב.',
 };
 const HIDE = ['not_granted', 'sampling_disabled', 'not_declared', 'capability_disabled', 'capability_removed'];
 function setBusy(b) { busy = b; sendBtn.textContent = b ? 'עצירה' : 'שליחה'; sendBtn.classList.toggle('stop', b); input.disabled = b; }
@@ -639,15 +680,18 @@ async function ask(q) {
 sendBtn.addEventListener('click', () => { if (busy) { ctl?.abort(); return; } const q = input.value; input.value = ''; ask(q); });
 input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); sendBtn.click(); } });
 input.addEventListener('input', () => { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 128) + 'px'; });
-askBtn.addEventListener('click', () => { chat.hidden = false; askBtn.hidden = true; if (!log.children.length) { addMsg('note-msg', 'הסוכן עונה על סמך הנתונים שבדשבורד. השאלות נשלחות ל־Claude דרך החשבון שלכם.'); showSuggestions(); } input.focus(); });
+askBtn.addEventListener('click', () => { chat.hidden = false; askBtn.hidden = true; if (!log.children.length) { addMsg('note-msg', viaProxy ? 'הסוכן עונה על סמך הנתונים שבדשבורד בלבד. השאלות נשלחות לעיבוד ב־Claude.' : 'הסוכן עונה על סמך הנתונים שבדשבורד. השאלות נשלחות ל־Claude דרך החשבון שלכם.'); showSuggestions(); } input.focus(); });
 $('chat-close').addEventListener('click', () => { chat.hidden = true; askBtn.hidden = false; askBtn.focus(); });
 
 (async () => {
   try {
-    sample = window.claude && window.claude.use ? await window.claude.use('sample') : null;
-    if (!sample) return;
-    const lim = await sample.limits().catch(() => null);
-    toolsOk = !!(lim && lim.tools && lim.tools.maxCount >= TOOLS.length);
+    sample = window.claude && window.claude.use ? await window.claude.use('sample').catch(() => null) : null;
+    if (sample) {
+      const lim = await sample.limits().catch(() => null);
+      toolsOk = !!(lim && lim.tools && lim.tools.maxCount >= TOOLS.length);
+    } else if (CHAT_PROXY) {
+      sample = proxySample; toolsOk = true; viaProxy = true;
+    } else return;
     askBtn.hidden = false;
   } catch (err) { sample = null; }
 })();
