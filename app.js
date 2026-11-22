@@ -157,6 +157,8 @@ function barChart(box, rows, { x, y, label, tipLabel, hi, fmtY }) {
 const MONTHS_HE = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
 const qLabel = (id) => id.startsWith('Q') ? 'רבעון ' + id.slice(1, 2) + ' ' + id.slice(3) : MONTHS_HE[+id.slice(5) - 1] + ' ' + id.slice(0, 4);
 const qShort = (id) => id.startsWith('Q') ? id.slice(0, 2) + ' ' + id.slice(5) : id.slice(5) + '/' + id.slice(2, 4);
+// the dashboard reports on the main site only: Hebrew and English
+const SITE_KEYS = ['he', 'en'];
 function staticModel() {
   const q = (id, start, end) => ({ id, type: 'q', start, end });
   const periods = [q('Q3 2026', '2026-07-01', '2026-09-30'), q('Q2 2026', '2026-04-01', '2026-06-30'), q('Q1 2026', '2026-01-01', '2026-03-31'), q('Q3 2025', '2025-07-01', '2025-09-30')];
@@ -164,7 +166,7 @@ function staticModel() {
   const days = (site, id) => (id === 'Q3 2026' && (site === 'he' || site === 'en')) || id === 'Q3 2025' ? 60 : daysBetween(periods.find((p) => p.id === id).start, periods.find((p) => p.id === id).end);
   const sites = {};
   for (const r of GA_SITES) {
-    if (r.site.startsWith('win')) continue;
+    if (!SITE_KEYS.includes(r.site)) continue;
     const s = sites[r.site] = sites[r.site] || { key: r.site, name: r.name, stats: {} };
     s.stats[r.q] = { s: r.s, u: r.u, d: r.d ?? null, days: days(r.site, r.q) };
   }
@@ -175,7 +177,7 @@ function staticModel() {
 }
 function liveModel(g) {
   const sites = {};
-  for (const s of g.sites) if (Object.keys(s.stats).length) sites[s.key] = s;
+  for (const s of g.sites) if (SITE_KEYS.includes(s.key) && Object.keys(s.stats).length) sites[s.key] = s;
   return { live: true, end: g.end, periods: g.periods, sites, ai: g.ai || {}, pages: g.pages || {} };
 }
 const M = D.ga && D.ga.sites && D.ga.sites.some((s) => s.key === 'he' && Object.keys(s.stats).length) ? liveModel(D.ga) : staticModel();
@@ -221,7 +223,7 @@ function renderStatic() {
   $('takeaway').replaceChildren(...parts.map((p) => typeof p === 'string' ? document.createTextNode(p) : el('b', '', p[0])));
   if (M.live) {
     $('ga-note').replaceChildren(el('b', '', 'הערה על המדידה: '), document.createTextNode('בעקבות תקלה טכנית במערך המדידה באתר הראשי, מ־30.8.2026 נאספו נתוני Google Analytics חלקיים בלבד (בעיקר בספטמבר 2026), ולכן נתוני האתר הראשי לתקופה זו נמוכים מהתנועה בפועל. נתוני Google Search Console מלאים. הנתונים מתעדכנים אוטומטית כל בוקר.'));
-    $('sites-table-note').textContent = '* נמדד רק בחלק מימי התקופה (למשל, אתר שעלה לאוויר באמצע הרבעון או תקופת התקלה).';
+    $('sites-table-note').textContent = '* נמדד רק בחלק מימי התקופה (למשל בתקופת התקלה).';
   }
 
   const maxW = d3.max(GA_WINNERS, (r) => r[2]);
@@ -265,7 +267,8 @@ function renderSites() {
   tile(st, 'אתר עברית · סשנים', fmt(he.s), prev(heP ? fmt(heP.s) : null));
   tile(st, 'אתר עברית · זמן שהייה לסשן', mmss(he.d), [...prev(heP ? mmss(heP.d) : null), ' · ממוצע שוק 1:30–3:00']);
   if (en) {
-    tile(st, 'אתר אנגלית · מבקרים ייחודיים', fmt(en.u), [...prev(enP ? fmt(enP.u) : null), ' · סשנים ', pv(fmt(en.s))]);
+    tile(st, 'אתר אנגלית · מבקרים ייחודיים', fmt(en.u), prev(enP ? fmt(enP.u) : null));
+    tile(st, 'אתר אנגלית · סשנים', fmt(en.s), prev(enP ? fmt(enP.s) : null));
     tile(st, 'אתר אנגלית · זמן שהייה לסשן', mmss(en.d), [...prev(enP ? mmss(enP.d) : null), ' · ממוצע שוק 1:30–3:00']);
   }
   const extras = Object.keys(M.sites).filter((k) => k !== 'he' && k !== 'en' && has(k, q));
