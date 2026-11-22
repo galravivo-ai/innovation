@@ -537,7 +537,7 @@ const SUGGEST = ['מה המגמה בקליקים מגוגל בחצי השנה ה
 const turns = [];
 let sample = null, toolsOk = false, ctl = null, busy = false, viaProxy = false;
 // Outside claude.ai the chat goes through a small Cloudflare Worker (worker/chat-proxy.js) that holds the API key.
-const CHAT_PROXY = '';
+const CHAT_PROXY = 'https://iia-chat.galravivo.workers.dev';
 
 const fail = (code, text) => Object.assign(new Error(code), { code, text });
 async function proxySample(msgs, { tools, onText, signal } = {}) {
