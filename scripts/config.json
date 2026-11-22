@@ -5,5 +5,17 @@
     "lagDays": 2,
     "topDays": 90,
     "enPathContains": "innovationisrael.org.il/en/"
+  },
+  "ga": {
+    "start": "2025-07-01",
+    "sites": [
+      { "key": "he", "name": "אתר עברית", "property": "374958560" },
+      { "key": "en", "name": "אתר אנגלית", "property": "459565280" },
+      { "key": "bc", "name": "אתר BC", "property": "498174319" },
+      { "key": "iserd", "name": "אתר ISERD", "property": "518333875" }
+    ],
+    "aiSite": "he",
+    "aiSourcePattern": ".*(chatgpt|openai|gemini|bard|perplexity|claude|anthropic|copilot|deepseek|grok|meta\\.ai|mistral).*",
+    "topPages": { "he": "pageTitle", "en": "pagePath" }
   }
 }
