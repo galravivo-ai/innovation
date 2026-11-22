@@ -150,13 +150,49 @@ function barChart(box, rows, { x, y, label, tipLabel, hi, fmtY }) {
     .on('mouseleave', () => { bars.attr('opacity', 1); tip.hidden = true; });
 }
 
-// ---------- static (Google Analytics) sections ----------
-const ga = (site, q) => GA_SITES.find((r) => r.site === site && r.q === q);
-const QS = ['Q3 2026', 'Q2 2026', 'Q1 2026', 'Q3 2025'];
-// totals as reported by Google Analytics (they include small AI sources not listed per channel)
-const aiTot = { s3: 3231, u3: 1710, s2: 3002, u2: 1398 };
-const aiDaily = { q3: aiTot.s3 / AI_DAYS.q3, q2: aiTot.s2 / AI_DAYS.q2 };
-const aiChg = aiDaily.q3 / aiDaily.q2 - 1;
+// ---------- Google Analytics model ----------
+// One shape for both sources: the live GA4 data the daily refresh writes into data.js (D.ga),
+// or, when that is missing, the Q3 2026 report figures at the top of this file.
+// M.sites[key].stats[periodId] = { s: sessions, u: users, d: avg session seconds, days: days with data }
+const MONTHS_HE = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
+const qLabel = (id) => id.startsWith('Q') ? 'רבעון ' + id.slice(1, 2) + ' ' + id.slice(3) : MONTHS_HE[+id.slice(5) - 1] + ' ' + id.slice(0, 4);
+const qShort = (id) => id.startsWith('Q') ? id.slice(0, 2) + ' ' + id.slice(5) : id.slice(5) + '/' + id.slice(2, 4);
+function staticModel() {
+  const q = (id, start, end) => ({ id, type: 'q', start, end });
+  const periods = [q('Q3 2026', '2026-07-01', '2026-09-30'), q('Q2 2026', '2026-04-01', '2026-06-30'), q('Q1 2026', '2026-01-01', '2026-03-31'), q('Q3 2025', '2025-07-01', '2025-09-30')];
+  // the main site was measured 1.7–29.8 in both Q3s; the AI and BC sites went live at the end of July 2025
+  const days = (site, id) => (id === 'Q3 2026' && (site === 'he' || site === 'en')) || id === 'Q3 2025' ? 60 : daysBetween(periods.find((p) => p.id === id).start, periods.find((p) => p.id === id).end);
+  const sites = {};
+  for (const r of GA_SITES) {
+    if (r.site.startsWith('win')) continue;
+    const s = sites[r.site] = sites[r.site] || { key: r.site, name: r.name, stats: {} };
+    s.stats[r.q] = { s: r.s, u: r.u, d: r.d ?? null, days: days(r.site, r.q) };
+  }
+  const ch = (k) => Object.fromEntries(GA_AI.map((r) => [r.ch, { s: r['s' + k], u: r['u' + k] }]));
+  // AI totals as reported (they include small sources not listed per channel)
+  const ai = { 'Q3 2026': { s: 3231, u: 1710, channels: ch(3) }, 'Q2 2026': { s: 3002, u: 1398, channels: ch(2) } };
+  return { live: false, end: '2026-09-30', periods, sites, ai, pages: { he: { 'Q3 2026': GA_PAGES.he }, en: { 'Q3 2026': GA_PAGES.en } } };
+}
+function liveModel(g) {
+  const sites = {};
+  for (const s of g.sites) if (Object.keys(s.stats).length) sites[s.key] = s;
+  return { live: true, end: g.end, periods: g.periods, sites, ai: g.ai || {}, pages: g.pages || {} };
+}
+const M = D.ga && D.ga.sites && D.ga.sites.some((s) => s.key === 'he' && Object.keys(s.stats).length) ? liveModel(D.ga) : staticModel();
+const period = (id) => M.periods.find((p) => p.id === id);
+const lenOf = (id) => { const p = period(id); return p ? daysBetween(p.start, p.end) : 0; };
+const stat = (site, id) => (M.sites[site] && M.sites[site].stats[id]) || null;
+const has = (site, id) => !!stat(site, id);
+const partial = (site, id) => { const s = stat(site, id); return !!s && s.days < lenOf(id) * 0.9; };
+const prevOf = (id) => { const p = period(id); if (!p) return null; const older = M.periods.filter((x) => x.type === p.type && x.start < p.start); return older.length ? older[0].id : null; };
+const quarterEnd = (id) => iso(new Date(Date.UTC(+id.slice(3), +id.slice(1, 2) * 3, 0)));
+// default: the last quarter that has ended (a quarter in progress can still be picked)
+const DEFAULT_Q = (M.periods.find((p) => p.type === 'q' && has('he', p.id) && p.end === quarterEnd(p.id)) || M.periods.find((p) => has('he', p.id)) || M.periods[0]).id;
+const QS = M.periods.filter((p) => p.type === 'q' && has('he', p.id)).slice(0, 4).map((p) => p.id);
+const aiOf = (id) => M.ai[id] || null;
+const aiDays = (id) => (stat('he', id) && stat('he', id).days) || lenOf(id);
+const aiDaily = (id) => { const a = aiOf(id); return a ? a.s / aiDays(id) : null; };
+const aiChange = (id) => { const p = prevOf(id); const a = aiDaily(id), b = p ? aiDaily(p) : null; return a != null && b ? a / b - 1 : null; };
 
 function tile(parent, label, value, subParts) {
   const t = el('div', 'tile');
@@ -169,24 +205,25 @@ const pv = (t) => el('span', 'pv', t);
 const chipEl = (v) => { const c = el('span', 'chip'); setChip(c, v); return c; };
 
 function renderStatic() {
-  const he3 = ga('he', 'Q3 2026'), he2 = ga('he', 'Q2 2026'), en3 = ga('en', 'Q3 2026'), en2 = ga('en', 'Q2 2026');
-  $('h-users').textContent = fmt(he3.u);
-  $('h-ai').textContent = signed(aiChg);
-  const gq3 = summarize('main', '2026-07-01', '2026-09-30'), gq2 = summarize('main', '2026-04-01', '2026-06-30');
-  const gchg = gq3.clicks / gq2.clicks - 1;
-  const parts = [
-    'זמן השהייה באתר העברי עלה ל־', [mmss(he3.d) + ' דק\''], ' לסשן (לעומת ' + mmss(he2.d) + ' ברבעון הקודם), והתנועה מכלי AI עלתה ב־',
-    [pct0(aiChg)], ' בממוצע יומי. הקליקים מגוגל ברבעון 3 ' + (gchg < 0 ? 'ירדו' : 'עלו') + ' ב־', [pct0(Math.abs(gchg))], ' מול רבעון 2' + (gchg < 0 ? ', בעיקר בספטמבר.' : '.'),
-  ];
-  $('takeaway').replaceChildren(...parts.map((p) => typeof p === 'string' ? document.createTextNode(p) : el('b', '', p[0])));
-
-  for (const lang of ['he', 'en']) {
-    const rows = GA_PAGES[lang], maxU = d3.max(rows, (r) => r[2]);
-    fillTable('pages-' + lang, rows.map((r, i) => [i + 1, ...r]), [
-      { cls: 'num rank', f: (r) => r[0] }, { cls: 'txt', f: (r) => r[1] }, { cls: 'num', f: (r) => fmt(r[2]) },
-      { cls: 'num bar', w: (r) => (r[3] / maxU * 100).toFixed(1) + '%', f: (r) => fmt(r[3]) },
-    ]);
+  // headline figures and summary follow the default period (the last quarter that has ended)
+  const dq = DEFAULT_Q, pq = prevOf(dq), dp = period(dq), pp = pq && period(pq);
+  const heD = stat('he', dq), heP = pq && stat('he', pq), ac = aiChange(dq);
+  $('h-users').textContent = fmt(heD.u);
+  $('h-users-range').textContent = qLabel(dq) + (M.live ? '' : ' · 1.7–29.8');
+  $('h-ai').textContent = ac == null ? '—' : signed(ac);
+  $('h-ai-range').textContent = 'ממוצע סשנים ליום, ' + qLabel(dq) + (pq ? ' מול ' + qLabel(pq) : '');
+  const parts = ['זמן השהייה באתר העברי ב' + qLabel(dq) + ' היה ', [mmss(heD.d) + ' דק\''], ' לסשן' + (heP ? ' (לעומת ' + mmss(heP.d) + ' ב' + qLabel(pq) + ')' : '') + '.'];
+  if (ac != null) parts.push(' התנועה מכלי AI ' + (ac < 0 ? 'ירדה' : 'עלתה') + ' ב־', [pct0(Math.abs(ac))], ' בממוצע יומי.');
+  if (pp && dp.end <= COVER.main[1] && pp.start >= COVER.main[0]) {
+    const g1 = summarize('main', dp.start, dp.end), g0 = summarize('main', pp.start, pp.end), gchg = g1.clicks / g0.clicks - 1;
+    parts.push(' הקליקים מגוגל ' + (gchg < 0 ? 'ירדו' : 'עלו') + ' ב־', [pct0(Math.abs(gchg))], ' מול ' + qLabel(pq) + '.');
   }
+  $('takeaway').replaceChildren(...parts.map((p) => typeof p === 'string' ? document.createTextNode(p) : el('b', '', p[0])));
+  if (M.live) {
+    $('ga-note').replaceChildren(el('b', '', 'הערה על המדידה: '), document.createTextNode('בעקבות תקלה טכנית במערך המדידה באתר הראשי, מ־30.8.2026 נאספו נתוני Google Analytics חלקיים בלבד (בעיקר בספטמבר 2026), ולכן נתוני האתר הראשי לתקופה זו נמוכים מהתנועה בפועל. נתוני Google Search Console מלאים. הנתונים מתעדכנים אוטומטית כל בוקר.'));
+    $('sites-table-note').textContent = '* נמדד רק בחלק מימי התקופה (למשל, אתר שעלה לאוויר באמצע הרבעון או תקופת התקלה).';
+  }
+
   const maxW = d3.max(GA_WINNERS, (r) => r[2]);
   fillTable('winners-table', GA_WINNERS, [{ cls: 'txt', f: (r) => r[0] }, { cls: 'num', f: (r) => fmt(r[1]) }, { cls: 'num bar', w: (r) => (r[2] / maxW * 100).toFixed(1) + '%', f: (r) => fmt(r[2]) }]);
 
@@ -205,60 +242,86 @@ function renderStatic() {
   $('top-p-note').textContent = topText;
   $('updated').textContent = heDate(UPDATED);
 }
-// quarter chosen on the Analytics tabs (Google Analytics data exists per quarter only)
-const GA_Q = { sites: QS, ai: ['Q3 2026', 'Q2 2026'], pages: ['Q3 2026'], winners: ['Q3 2026'] };
-const PREV_Q = { 'Q3 2026': 'Q2 2026', 'Q2 2026': 'Q1 2026' };
-let gaQ = 'Q3 2026';
-const qLabel = (q) => 'רבעון ' + q.slice(1, 2) + ' ' + q.slice(3);
-const partialQ = (q) => q === 'Q3 2026' || q === 'Q3 2025';
-const markHead = (id, qOf, q) => $(id).querySelectorAll('thead th').forEach((th, i) => { th.className = (i ? 'num' : '') + (qOf(i) === q ? ' q3' : ''); });
+// period chosen on the Analytics tabs: quarters and months that have data for that tab
+const GA_Q = {
+  sites: M.periods.filter((p) => has('he', p.id)).map((p) => p.id),
+  ai: M.periods.filter((p) => aiOf(p.id)).map((p) => p.id),
+  pages: M.periods.filter((p) => (M.pages.he && (M.pages.he[p.id] || []).length) || (M.pages.en && (M.pages.en[p.id] || []).length)).map((p) => p.id),
+  winners: ['Q3 2026'],
+};
+let gaQ = DEFAULT_Q;
+const pick = (tabKey) => GA_Q[tabKey].includes(gaQ) ? gaQ : GA_Q[tabKey].includes(DEFAULT_Q) ? DEFAULT_Q : GA_Q[tabKey][0];
+const setHead = (id, labels, isHi) => $(id).querySelector('thead tr').replaceChildren(...labels.map((t, i) => el('th', ((i ? 'num' : '') + (isHi(i) ? ' q3' : '')).trim(), t)));
+const coverNote = (site, id) => { const s = stat(site, id); return s && s.days < lenOf(id) ? ' · נמדדו ' + s.days + ' מתוך ' + lenOf(id) + ' ימים' : ''; };
+const prevWord = (id) => id.startsWith('Q') ? 'רבעון קודם ' : 'חודש קודם ';
 
 function renderSites() {
-  const q = gaQ, pq = PREV_Q[q];
-  $('sites-q-label').textContent = 'Google Analytics · ' + qLabel(q) + (partialQ(q) ? ' · אתר ראשי 1.7–29.8' : '');
-  const he = ga('he', q), en = ga('en', q), heP = pq && ga('he', pq), enP = pq && ga('en', pq);
-  const prev = (v) => pq ? ['רבעון קודם ', pv(v)] : ['אין נתוני רבעון קודם בדוח'];
+  const q = pick('sites'), pq = prevOf(q);
+  $('sites-q-label').textContent = 'Google Analytics · ' + qLabel(q) + (!M.live && (q === 'Q3 2026' || q === 'Q3 2025') ? ' · אתר ראשי 1.7–29.8' : coverNote('he', q));
+  const he = stat('he', q), en = stat('en', q), heP = pq && stat('he', pq), enP = pq && stat('en', pq);
+  const prev = (v) => v != null ? [prevWord(q), pv(v)] : ['אין נתוני תקופה קודמת'];
   const st = $('site-tiles'); st.replaceChildren();
-  tile(st, 'אתר עברית · מבקרים ייחודיים', fmt(he.u), prev(pq && fmt(heP.u)));
-  tile(st, 'אתר עברית · סשנים', fmt(he.s), prev(pq && fmt(heP.s)));
-  tile(st, 'אתר עברית · זמן שהייה לסשן', mmss(he.d), [...prev(pq && mmss(heP.d)), ' · ממוצע שוק 1:30–3:00']);
-  tile(st, 'אתר אנגלית · מבקרים ייחודיים', fmt(en.u), [...prev(pq && fmt(enP.u)), ' · סשנים ', pv(fmt(en.s))]);
-  tile(st, 'אתר אנגלית · זמן שהייה לסשן', mmss(en.d), [...prev(pq && mmss(enP.d)), ' · ממוצע שוק 1:30–3:00']);
-  tile(st, 'אתר AI · מבקרים ייחודיים', fmt(ga('ai', q).u), ['אתר BC ', pv(fmt(ga('bc', q).u)), q === 'Q3 2025' ? ' · נתונים חלקיים' : ' · ISERD טרם נמדד']);
-  const sites = [...new Set(GA_SITES.map((r) => r.site))];
-  fillTable('sites-table', sites, [
-    { f: (s) => ga(s, q).name + (s === 'ai' || s === 'bc' ? ' *' : '') },
-    ...QS.flatMap((qq) => [{ cls: qq === q ? 'num q3' : 'num', f: (s) => fmt(ga(s, qq).s) }, { cls: qq === q ? 'num q3' : 'num', f: (s) => fmt(ga(s, qq).u) }]),
+  tile(st, 'אתר עברית · מבקרים ייחודיים', fmt(he.u), prev(heP ? fmt(heP.u) : null));
+  tile(st, 'אתר עברית · סשנים', fmt(he.s), prev(heP ? fmt(heP.s) : null));
+  tile(st, 'אתר עברית · זמן שהייה לסשן', mmss(he.d), [...prev(heP ? mmss(heP.d) : null), ' · ממוצע שוק 1:30–3:00']);
+  if (en) {
+    tile(st, 'אתר אנגלית · מבקרים ייחודיים', fmt(en.u), [...prev(enP ? fmt(enP.u) : null), ' · סשנים ', pv(fmt(en.s))]);
+    tile(st, 'אתר אנגלית · זמן שהייה לסשן', mmss(en.d), [...prev(enP ? mmss(enP.d) : null), ' · ממוצע שוק 1:30–3:00']);
+  }
+  const extras = Object.keys(M.sites).filter((k) => k !== 'he' && k !== 'en' && has(k, q));
+  if (extras.length) {
+    const sub = extras.slice(1).flatMap((k, i) => [i ? ' · ' : '', M.sites[k].name + ' ', pv(fmt(stat(k, q).u))]);
+    tile(st, M.sites[extras[0]].name + ' · מבקרים ייחודיים', fmt(stat(extras[0], q).u), sub.length ? sub : [qLabel(q)]);
+  }
+  const keys = Object.keys(M.sites);
+  const cell = (k, qq, f) => has(k, qq) ? fmt(stat(k, qq)[f]) + (partial(k, qq) ? '*' : '') : '—';
+  fillTable('sites-table', keys, [
+    { f: (k) => M.sites[k].name },
+    ...QS.flatMap((qq) => [{ cls: qq === q ? 'num q3' : 'num', f: (k) => cell(k, qq, 's') }, { cls: qq === q ? 'num q3' : 'num', f: (k) => cell(k, qq, 'u') }]),
   ]);
-  markHead('sites-table', (i) => QS[(i - 1) >> 1], q);
-  fillTable('dur-table', ['he', 'en'], [{ f: (s) => ga(s, q).name }, ...QS.map((qq) => ({ cls: qq === q ? 'num q3' : 'num', f: (s) => mmss(ga(s, qq).d) }))]);
-  markHead('dur-table', (i) => QS[i - 1], q);
+  setHead('sites-table', ['אתר', ...QS.flatMap((qq) => ['סשנים ' + qShort(qq), 'משתמשים ' + qShort(qq)])], (i) => i > 0 && QS[(i - 1) >> 1] === q);
+  const durKeys = keys.filter((k) => QS.some((qq) => stat(k, qq) && stat(k, qq).d != null)).slice(0, 2);
+  fillTable('dur-table', durKeys, [{ f: (k) => M.sites[k].name }, ...QS.map((qq) => ({ cls: qq === q ? 'num q3' : 'num', f: (k) => has(k, qq) && stat(k, qq).d != null ? mmss(stat(k, qq).d) : '—' }))]);
+  setHead('dur-table', ['אתר', ...QS.map(qShort)], (i) => i > 0 && QS[i - 1] === q);
 }
 function renderAi() {
-  const q = GA_Q.ai.includes(gaQ) ? gaQ : 'Q3 2026', is3 = q === 'Q3 2026';
-  $('ai-q-label').textContent = 'Google Analytics · ' + qLabel(q) + (is3 ? ' · 1.7–29.8 (60 ימים)' : ' (91 ימים)');
-  const s = is3 ? aiTot.s3 : aiTot.s2, u = is3 ? aiTot.u3 : aiTot.u2, daily = is3 ? aiDaily.q3 : aiDaily.q2;
+  const q = pick('ai'), pq = prevOf(q) && aiOf(prevOf(q)) ? prevOf(q) : null;
+  const a = aiOf(q), b = pq ? aiOf(pq) : null, he = stat('he', q), heP = pq ? stat('he', pq) : null, ch = aiChange(q);
+  $('ai-q-label').textContent = 'Google Analytics · ' + qLabel(q) + ' · ' + aiDays(q) + ' ימי מדידה';
   const at = $('ai-tiles'); at.replaceChildren();
-  tile(at, 'סשנים מכלי AI · ' + qLabel(q), fmt(s), is3 ? [pv(fmt(u)), ' משתמשים · רבעון קודם ', pv(fmt(aiTot.s2)), ' סשנים'] : [pv(fmt(u)), ' משתמשים']);
-  tile(at, 'ממוצע סשנים ליום', d3.format('.0f')(daily), is3 ? [chipEl(aiChg), ' מול ', pv(d3.format('.0f')(aiDaily.q2)), ' ביום ברבעון הקודם'] : ['91 ימי מדידה · אין נתוני רבעון קודם בדוח']);
-  tile(at, 'נתח מכלל הסשנים באתר העברי', pct1(s / ga('he', q).s), is3 ? ['רבעון קודם ', pv(pct1(aiTot.s2 / ga('he', 'Q2 2026').s))] : ['מתוך ' + fmt(ga('he', q).s) + ' סשנים']);
-  tile(at, 'חלק ChatGPT מתנועת ה־AI', pct0(GA_AI[0][is3 ? 's3' : 's2'] / s), ['המקור המוביל מבין כלי ה־AI']);
-  const k = is3 ? 's3' : 's2', maxS = d3.max(GA_AI, (r) => r[k]);
-  const aiRows = [...GA_AI, { ch: 'סה"כ', ...aiTot, total: true }].map((r) => ({ ...r, chg: (r.s3 / AI_DAYS.q3) / (r.s2 / AI_DAYS.q2) - 1 }));
-  const c = (on, bar) => (r) => 'num' + (on ? ' q3' : '') + (on && bar && !r.total ? ' bar' : '');
-  fillTable('ai-table', aiRows, [
+  tile(at, 'סשנים מכלי AI · ' + qLabel(q), fmt(a.s), b ? [pv(fmt(a.u)), ' משתמשים · ' + prevWord(q), pv(fmt(b.s)), ' סשנים'] : [pv(fmt(a.u)), ' משתמשים']);
+  tile(at, 'ממוצע סשנים ליום', d3.format('.0f')(aiDaily(q)), b ? [chipEl(ch), ' מול ', pv(d3.format('.0f')(aiDaily(pq))), ' ביום ב' + qLabel(pq)] : [aiDays(q) + ' ימי מדידה']);
+  if (he) tile(at, 'נתח מכלל הסשנים באתר העברי', pct1(a.s / he.s), b && heP ? [prevWord(q), pv(pct1(b.s / heP.s))] : ['מתוך ' + fmt(he.s) + ' סשנים']);
+  const lead = Object.entries(a.channels || {}).sort((x, y) => y[1].s - x[1].s)[0];
+  if (lead) tile(at, 'חלק ' + lead[0] + ' מתנועת ה־AI', pct0(lead[1].s / a.s), ['המקור המוביל מבין כלי ה־AI']);
+  const names = [...new Set([...Object.keys(a.channels || {}), ...Object.keys((b && b.channels) || {})])].sort((x, y) => ((a.channels[y] || {}).s || 0) - ((a.channels[x] || {}).s || 0));
+  const row = (name, x, y, total) => ({ ch: name, s3: x ? x.s : 0, u3: x ? x.u : 0, s2: y ? y.s : null, u2: y ? y.u : null, total, chg: x && y && y.s ? (x.s / aiDays(q)) / (y.s / aiDays(pq)) - 1 : null });
+  const rows = [...names.map((n) => row(n, a.channels[n], b && b.channels[n])), row('סה"כ', a, b, true)];
+  const maxS = d3.max(rows.filter((r) => !r.total), (r) => r.s3) || 1;
+  fillTable('ai-table', rows, [
     { f: (r) => r.ch },
-    { cls: c(is3, true), w: (r) => is3 && !r.total ? (r.s3 / maxS * 100).toFixed(1) + '%' : '0%', f: (r) => fmt(r.s3) },
-    { cls: c(is3), f: (r) => fmt(r.u3) },
-    { cls: c(!is3, true), w: (r) => !is3 && !r.total ? (r.s2 / maxS * 100).toFixed(1) + '%' : '0%', f: (r) => fmt(r.s2) },
-    { cls: c(!is3), f: (r) => fmt(r.u2) },
-    { cls: (r) => 'num lead ' + (r.chg >= 0 ? 'up' : 'down'), f: (r) => signed(r.chg) },
+    { cls: (r) => 'num q3' + (r.total ? '' : ' bar'), w: (r) => r.total ? '0%' : (r.s3 / maxS * 100).toFixed(1) + '%', f: (r) => fmt(r.s3) },
+    { cls: 'num q3', f: (r) => fmt(r.u3) },
+    { cls: 'num', f: (r) => r.s2 == null ? '—' : fmt(r.s2) }, { cls: 'num', f: (r) => r.u2 == null ? '—' : fmt(r.u2) },
+    { cls: (r) => 'num lead' + (r.chg == null ? '' : r.chg >= 0 ? ' up' : ' down'), f: (r) => r.chg == null ? '—' : signed(r.chg) },
   ], (r) => r.total ? 'total' : '');
-  markHead('ai-table', (i) => (i === 1 || i === 2) ? 'Q3 2026' : (i === 3 || i === 4) ? 'Q2 2026' : null, q);
+  const pl = pq ? qShort(pq) : 'קודם';
+  setHead('ai-table', ['ערוץ', 'סשנים ' + qShort(q), 'משתמשים ' + qShort(q), 'סשנים ' + pl, 'משתמשים ' + pl, 'שינוי בממוצע יומי'], (i) => i === 1 || i === 2);
+}
+function renderPages() {
+  const q = pick('pages');
+  $('pages-q-label').textContent = 'Google Analytics · ' + qLabel(q) + (!M.live && q === 'Q3 2026' ? ' · 1.7–29.8' : coverNote('he', q));
+  for (const lang of ['he', 'en']) {
+    const rows = (M.pages[lang] && M.pages[lang][q]) || [], maxU = d3.max(rows, (r) => r[2]) || 1;
+    fillTable('pages-' + lang, rows.map((r, i) => [i + 1, ...r]), [
+      { cls: 'num rank', f: (r) => r[0] }, { cls: 'txt', f: (r) => r[1] }, { cls: 'num', f: (r) => fmt(r[2]) },
+      { cls: 'num bar', w: (r) => (r[3] / maxU * 100).toFixed(1) + '%', f: (r) => fmt(r[3]) },
+    ]);
+  }
 }
 function drawHeUsers() {
-  const rows = QS.slice().reverse().map((q) => ga('he', q));
-  barChart($('he-users-chart'), rows, { x: (d) => d.q, y: (d) => d.u, label: (d) => d.q, hi: (d) => d.q === gaQ, fmtY: (v) => d3.format('~s')(v) });
+  const rows = QS.slice().reverse().map((q) => ({ q, ...stat('he', q) }));
+  barChart($('he-users-chart'), rows, { x: (d) => d.q, y: (d) => d.u, label: (d) => qShort(d.q), tipLabel: (d) => qLabel(d.q), hi: (d) => d.q === gaQ, fmtY: (v) => d3.format('~s')(v) });
 }
 
 // ---------- period (Search Console) ----------
@@ -287,11 +350,11 @@ function setRange(s, e) {
 function setQuarter(q) {
   gaQ = q;
   try { localStorage.setItem('iia-q', q); } catch (err) {}
-  renderSites(); renderAi();
+  renderSites(); renderAi(); renderPages();
   if (tab === 'sites') drawHeUsers();
   updatePeriodUi();
 }
-const effQ = () => (GA_Q[tab] || []).includes(gaQ) ? gaQ : (GA_Q[tab] || ['Q3 2026'])[0];
+const effQ = () => GA_Q[tab] ? pick(tab) : DEFAULT_Q;
 const choice = (label, pressed, onPick) => { const b = el('button', '', label); b.type = 'button'; b.setAttribute('aria-pressed', String(pressed)); b.addEventListener('click', () => { onPick(); closePop(); pbtn.focus(); }); return b; };
 
 // the period button and its popover adapt to the open tab
@@ -307,7 +370,9 @@ function updatePeriodUi() {
     $('pp-note').textContent = 'נתוני Search Console זמינים מ־' + heDate(COVER.main[0]) + ' עד ' + heDate(DATA_END) + '. כל מספר מושווה לתקופה הקודמת באותו אורך.';
   } else if (opts) {
     $('presets').replaceChildren(...opts.map((q) => choice(qLabel(q), q === effQ(), () => setQuarter(q))));
-    $('pp-note').textContent = opts.length > 1 ? 'נתוני Google Analytics בדוח זה זמינים לפי רבעון. ברבעון 3 2026 האתר הראשי נמדד 1.7–29.8.' : 'לנתונים אלה בדוח זמין רבעון 3 2026 בלבד (1.7–29.8).';
+    $('pp-note').textContent = opts.length === 1 ? 'לנתונים אלה זמין ' + qLabel(opts[0]) + ' בלבד.'
+      : M.live ? 'נתוני Google Analytics זמינים לפי רבעון וחודש, עד ' + heDate(M.end) + '. רבעון או חודש שעוד לא הסתיימו מוצגים עד היום.'
+      : 'נתוני Google Analytics בדוח זה זמינים לפי רבעון. ברבעון 3 2026 האתר הראשי נמדד 1.7–29.8.';
   }
 }
 function openPop() {
@@ -385,10 +450,11 @@ function showTab(id, fromClick) {
 document.querySelectorAll('.nav button').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.go, true)));
 
 try { const saved = JSON.parse(localStorage.getItem('iia-range') || 'null'); if (saved && /^\d{4}-\d{2}-\d{2}$/.test(saved.start) && /^\d{4}-\d{2}-\d{2}$/.test(saved.end) && saved.start <= saved.end && saved.start >= COVER.main[0] && saved.end <= DATA_END) { state.start = saved.start; state.end = saved.end; } } catch (err) {}
-try { const q = localStorage.getItem('iia-q'); if (QS.includes(q)) gaQ = q; } catch (err) {}
+try { const q = localStorage.getItem('iia-q'); if (period(q)) gaQ = q; } catch (err) {}
 renderStatic();
 renderSites();
 renderAi();
+renderPages();
 renderPeriod();
 let startTab = location.hash.slice(1);
 if (!TABS.includes(startTab)) { try { startTab = localStorage.getItem('iia-tab'); } catch (err) { startTab = null; } }
@@ -407,16 +473,17 @@ function context() {
   return [
     'אתה "סוכן הנתונים" של דוח הדיגיטל של רשות החדשנות (innovationisrael.org.il). אתה עונה למי שצופה בדשבורד, בעברית, בשפה פשוטה וברורה.',
     'כללים: ענה רק על סמך הנתונים שלהלן ותוצאות הכלים. אל תמציא מספרים. אם אין נתון, אמור זאת ואמור מה כן קיים. ציין תמיד את התקופה ואת המקור (Google Analytics או Google Search Console). הדגש מספרים חשובים ב־**כוכביות**. השתמש ברשימות עם "- " כשזה עוזר. היה תמציתי: עד כ־150 מילים, אלא אם התבקש פירוט.',
-    'הערות מתודולוגיות: (1) נתוני Google Analytics של האתר הראשי ברבעון 3 2026 הם ל־1.7–29.8 בלבד (60 ימים) עקב תקלת מדידה; השוואות AI נעשות לפי ממוצע יומי (60 מול 91 ימים). (2) מסוף 2025 באנר עוגיות גורם לאנליטיקס למדוד כמחצית עד שני שלישים מהכניסות. (3) ברבעון 3 2025 נכללה תנועת ניוזלטר (כ־112 אלף סשנים), ולכן 2025 אינה בת השוואה ישירה. (4) Search Console נמדד בצד גוגל ומלא לכל התקופות. (5) מיקום ממוצע נמוך יותר הוא טוב יותר.',
+    'הערות מתודולוגיות: (1) ' + (M.live ? 'מ־30.8.2026 נתוני Google Analytics של האתר הראשי חלקיים בלבד עקב תקלת מדידה (בעיקר בספטמבר 2026), ולכן הם נמוכים מהתנועה בפועל; days = מספר הימים בתקופה שבהם נמדדו סשנים, והשוואות AI נעשות לפי ממוצע יומי.' : 'נתוני Google Analytics של האתר הראשי ברבעון 3 2026 הם ל־1.7–29.8 בלבד (60 ימים) עקב תקלת מדידה; השוואות AI נעשות לפי ממוצע יומי (60 מול 91 ימים).') + ' (2) מסוף 2025 באנר עוגיות גורם לאנליטיקס למדוד כמחצית עד שני שלישים מהכניסות. (3) ברבעון 3 2025 נכללה תנועת ניוזלטר (כ־112 אלף סשנים), ולכן 2025 אינה בת השוואה ישירה. (4) Search Console נמדד בצד גוגל ומלא לכל התקופות. (5) מיקום ממוצע נמוך יותר הוא טוב יותר.',
     'היום: ' + heDate(iso(new Date())) + '. הנתונים עודכנו לאחרונה ב־' + heDate(UPDATED) + '. התקופה שהצופה בחר כרגע בדשבורד: ' + state.start + ' עד ' + state.end + '.',
     'כיסוי Search Console יומי: כל הדומיין ' + COVER.main.join(' עד ') + '; אתר האנגלית (/en) ' + COVER.en.join(' עד ') + '. ' + (toolsOk ? 'לחישוב מדויק של כל טווח תאריכים השתמש בכלים gsc_summary ו־gsc_series. אם הצופה מבקש להציג תקופה בדשבורד, השתמש ב־set_dashboard_period.' : 'לחישוב טווחים השתמש בסיכומים החודשיים שלהלן.'),
     'Search Console חודשי, כל הדומיין: ' + JSON.stringify(monthly('main')),
     'Search Console חודשי, אתר אנגלית: ' + JSON.stringify(monthly('en')),
     'Search Console, ביטויים מובילים ' + TOP_RANGE.join(' עד ') + ' [ביטוי, קליקים, חשיפות, CTR%, מיקום]: ' + JSON.stringify(GSC_QUERIES),
     'Search Console, דפים מובילים ' + TOP_RANGE.join(' עד ') + ' [דף, קליקים, חשיפות, מיקום]: ' + JSON.stringify(GSC_PAGES),
-    'Google Analytics לפי אתר ורבעון (s=סשנים, u=משתמשים, d=זמן שהייה ממוצע לסשן בשניות): ' + JSON.stringify(GA_SITES),
-    'Google Analytics, כניסות מכלי AI לאתר הראשי (s3/u3 = רבעון 3 2026, 1.7–29.8, 60 ימים; s2/u2 = רבעון 2 2026, 91 ימים): ' + JSON.stringify(GA_AI) + '. עמודי נחיתה מובילים מ־AI: מסלול תנופה, עמוד הבית, Pre-Seed, מסלול מהיר להארכת ה־Runway.',
-    'Google Analytics, דפים נצפים 1.7–29.8.2026 [דף, צפיות, משתמשים]: עברית ' + JSON.stringify(GA_PAGES.he) + '; אנגלית ' + JSON.stringify(GA_PAGES.en),
+    'Google Analytics, תקופות (רבעונים "Q3 2026" וחודשים "2026-08", עם תאריכי התחלה וסיום): ' + JSON.stringify(M.periods.map((p) => [p.id, p.start, p.end])),
+    'Google Analytics לפי אתר ותקופה (s=סשנים, u=משתמשים, d=זמן שהייה ממוצע לסשן בשניות, days=ימים עם נתונים): ' + JSON.stringify(Object.values(M.sites).map((s) => ({ site: s.name, stats: s.stats }))),
+    'Google Analytics, כניסות מכלי AI לאתר הראשי לפי תקופה (s=סשנים, u=משתמשים, channels=לפי כלי): ' + JSON.stringify(M.ai),
+    'Google Analytics, דפים נצפים לפי תקופה [דף, צפיות, משתמשים]: עברית ' + JSON.stringify(Object.fromEntries(QS.map((q) => [q, (M.pages.he || {})[q] || []]))) + '; אנגלית ' + JSON.stringify(Object.fromEntries(QS.map((q) => [q, (M.pages.en || {})[q] || []]))),
     'Google Analytics, דפי זוכים 1.7–29.8.2026 [דף, סשנים, משתמשים]: ' + JSON.stringify(GA_WINNERS),
   ].join('\n\n');
 }

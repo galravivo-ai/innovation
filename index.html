@@ -23,8 +23,8 @@
     <span class="arrow-sm" aria-hidden="true"></span>
     <h1>נתוני דיגיטל, רשות החדשנות</h1>
     <div class="hstats">
-      <div class="hstat"><span class="hv" id="h-users"></span><span class="hl">מבקרים ייחודיים באתר העברי</span><span class="hs">1.7–29.8.2026</span></div>
-      <div class="hstat"><span class="hv mint" id="h-ai"></span><span class="hl">עלייה בתנועה מכלי AI</span><span class="hs">ממוצע סשנים ליום, מול רבעון 2</span></div>
+      <div class="hstat"><span class="hv" id="h-users"></span><span class="hl">מבקרים ייחודיים באתר העברי</span><span class="hs" id="h-users-range"></span></div>
+      <div class="hstat"><span class="hv mint" id="h-ai"></span><span class="hl">שינוי בתנועה מכלי AI</span><span class="hs" id="h-ai-range"></span></div>
       <div class="hstat"><span class="hv" id="h-clicks"></span><span class="hl">קליקים מחיפוש בגוגל</span><span class="hs" id="h-clicks-range"></span></div>
     </div>
     <p class="take" id="takeaway"></p>
@@ -103,7 +103,7 @@
     <div class="tiles" id="site-tiles"></div>
     <div class="card">
       <h3>השוואה רבעונית: סשנים ומשתמשים</h3>
-      <span class="cnote">רבעון 3 2026 ורבעון 3 2025 באתר הראשי: 1.7–29.8 בלבד. * אתרי AI ו־BC עלו לאוויר בסוף יולי 2025, ולכן נתוני רבעון 3 2025 שלהם חלקיים.</span>
+      <span class="cnote" id="sites-table-note">רבעון 3 2026 ורבעון 3 2025 באתר הראשי: 1.7–29.8 בלבד. * אתרי AI ו־BC עלו לאוויר בסוף יולי 2025, ולכן נתוני רבעון 3 2025 שלהם חלקיים.</span>
       <div class="scroll"><table id="sites-table"><thead><tr><th>אתר</th><th class="num q3">סשנים Q3 26</th><th class="num q3">משתמשים Q3 26</th><th class="num">סשנים Q2 26</th><th class="num">משתמשים Q2 26</th><th class="num">סשנים Q1 26</th><th class="num">משתמשים Q1 26</th><th class="num">סשנים Q3 25</th><th class="num">משתמשים Q3 25</th></tr></thead><tbody></tbody></table></div>
     </div>
     <div class="grid">
@@ -131,7 +131,7 @@
   </section>
 
   <section class="sec" id="pages">
-    <div class="sechead"><h2>דפים נצפים ביותר</h2><span class="src">Google Analytics · 1.7–29.8.2026</span></div>
+    <div class="sechead"><h2>דפים נצפים ביותר</h2><span class="src live" id="pages-q-label"></span></div>
     <div class="grid">
       <div class="card"><h3>אתר עברית</h3><div class="scroll"><table id="pages-he"><thead><tr><th class="num">#</th><th>שם הדף</th><th class="num">צפיות</th><th class="num">משתמשים</th></tr></thead><tbody></tbody></table></div></div>
       <div class="card"><h3>אתר אנגלית</h3><div class="scroll"><table id="pages-en"><thead><tr><th class="num">#</th><th>כתובת</th><th class="num">צפיות</th><th class="num">משתמשים</th></tr></thead><tbody></tbody></table></div></div>

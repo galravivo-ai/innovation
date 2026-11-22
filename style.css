@@ -90,7 +90,7 @@ h1 { font-size: clamp(2.3rem, 5.6vw, 4rem); font-weight: 800; line-height: 1.02;
 .pp-head { display: flex; align-items: center; justify-content: space-between; }
 .pp-head b { font-size: 1rem; font-weight: 800; }
 .pp-head button { background: none; border: 0; font-size: 1.35rem; line-height: 1; cursor: pointer; color: var(--fg); padding: .1rem .3rem; }
-.pp-presets { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem; }
+.pp-presets { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem; max-height: 46vh; overflow-y: auto; }
 .pp-presets button { font-size: .88rem; font-weight: 500; text-align: start; background: var(--bg); border: 1px solid var(--line); padding: .6rem .7rem; cursor: pointer; }
 .pp-presets button:hover { border-color: var(--fg); }
 .pp-presets button[aria-pressed="true"] { background: var(--purple); border-color: var(--purple); color: #FFFFFF; font-weight: 700; }
