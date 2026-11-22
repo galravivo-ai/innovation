@@ -78,6 +78,13 @@ h1 { font-size: clamp(2.3rem, 5.6vw, 4rem); font-weight: 800; line-height: 1.02;
 .nav button { font-size: .95rem; font-weight: 500; background: none; border: 0; padding: .4rem 0; cursor: pointer; border-bottom: 4px solid transparent; }
 .nav button:hover { border-bottom-color: var(--p1-grey); }
 .nav button[aria-selected="true"] { border-bottom-color: var(--purple); font-weight: 800; color: var(--purple-ink); }
+.tools { display: flex; align-items: center; gap: .6rem; }
+/* site switch: two flat segments, the chosen one filled */
+.site-switch { display: inline-flex; border: 1px solid var(--fg); }
+.site-switch button { background: var(--panel); border: 0; padding: .45rem .9rem; font-size: .9rem; font-weight: 500; cursor: pointer; }
+.site-switch button + button { border-inline-start: 1px solid var(--fg); }
+.site-switch button:hover { background: var(--tint); }
+.site-switch button[aria-pressed="true"] { background: var(--purple); color: #FFFFFF; font-weight: 800; }
 .period { position: relative; }
 .period-btn { display: inline-flex; align-items: center; gap: .45rem; background: var(--panel); border: 1px solid var(--fg); padding: .45rem .75rem; cursor: pointer; white-space: nowrap; }
 .period-btn:hover, .period-btn[aria-expanded="true"] { background: var(--tint); }
@@ -212,7 +219,14 @@ td.lead { font-weight: 700; }
   .nav { flex-wrap: nowrap; overflow-x: auto; gap: 1.2rem; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
   .nav::-webkit-scrollbar { display: none; }
   .nav button { white-space: nowrap; padding-block: .5rem; }
-  .period-btn { width: 100%; justify-content: flex-start; }
+  .tools { gap: .4rem; }
+  .site-switch { flex: none; }
+  .site-switch button { padding: .45rem .7rem; }
+  .period { flex: 1; min-width: 0; }
+  .period-btn { width: 100%; min-width: 0; justify-content: flex-start; padding-inline: .55rem; }
+  .period-btn .pb-k { display: none; }
+  .src { white-space: normal; }
+  .period-btn .pb-v { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .period-btn .pb-v { flex: 1; text-align: start; }
   .pp-backdrop { background: rgba(13, 13, 13, .5); }
   .period-pop { position: fixed; top: auto; left: 0; right: 0; bottom: 0; width: auto; max-width: none; max-height: 85vh; overflow-y: auto; padding: 1.1rem max(16px, env(safe-area-inset-right, 0px)) calc(1.1rem + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }

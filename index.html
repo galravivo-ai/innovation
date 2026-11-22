@@ -23,9 +23,9 @@
     <span class="arrow-sm" aria-hidden="true"></span>
     <h1>נתוני דיגיטל, רשות החדשנות</h1>
     <div class="hstats">
-      <div class="hstat"><span class="hv" id="h-users"></span><span class="hl">מבקרים ייחודיים באתר העברי</span><span class="hs" id="h-users-range"></span></div>
+      <div class="hstat"><span class="hv" id="h-users"></span><span class="hl" id="h-users-lbl">מבקרים ייחודיים באתר</span><span class="hs" id="h-users-range"></span></div>
       <div class="hstat"><span class="hv mint" id="h-ai"></span><span class="hl">שינוי בתנועה מכלי AI</span><span class="hs" id="h-ai-range"></span></div>
-      <div class="hstat"><span class="hv" id="h-clicks"></span><span class="hl">קליקים מחיפוש בגוגל</span><span class="hs" id="h-clicks-range"></span></div>
+      <div class="hstat"><span class="hv" id="h-clicks"></span><span class="hl" id="h-clicks-lbl">קליקים מחיפוש בגוגל</span><span class="hs" id="h-clicks-range"></span></div>
     </div>
     <p class="take" id="takeaway"></p>
   </div>
@@ -35,12 +35,17 @@
   <div class="wrap">
     <nav class="nav" role="tablist" aria-label="מסכי הדוח">
       <button type="button" role="tab" data-go="gsc">חיפוש בגוגל</button>
-      <button type="button" role="tab" data-go="sites">אתרי הרשות</button>
+      <button type="button" role="tab" data-go="sites">תנועה לאתר</button>
       <button type="button" role="tab" data-go="ai">תנועה מכלי AI</button>
       <button type="button" role="tab" data-go="pages">דפים נצפים</button>
       <button type="button" role="tab" data-go="winners">דפי זוכים</button>
       <button type="button" role="tab" data-go="defs">הגדרות</button>
     </nav>
+    <div class="tools">
+    <div class="site-switch" role="group" aria-label="בחירת אתר">
+      <button type="button" data-site="he" aria-pressed="true">עברית</button>
+      <button type="button" data-site="en" aria-pressed="false" lang="en">English</button>
+    </div>
     <div class="period" id="period">
       <button type="button" class="period-btn" id="period-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="period-pop">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 2h2v2h6V2h2v2h3a1 1 0 0 1 1 1v15a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3V2zm12 8H5v9h14v-9zM5 6v2h14V6H5z"/></svg>
@@ -63,6 +68,7 @@
         <p class="pp-note" id="pp-note"></p>
       </div>
     </div>
+    </div>
   </div>
 </div>
 
@@ -75,15 +81,15 @@
     <div class="sechead"><h2>חיפוש בגוגל</h2><span class="src live" id="gsc-range-label"></span></div>
     <p>קליקים וחשיפות מתוצאות החיפוש האורגניות של גוגל, לפי התקופה שנבחרה למעלה, בהשוואה לתקופה באורך זהה שקדמה לה. הנתונים נמדדים בצד של גוגל ואינם מושפעים מתקלת המדידה או מבאנר העוגיות. <span id="gsc-coverage"></span></p>
     <div class="tiles">
-      <div class="tile"><span class="lbl">קליקים מגוגל · כל הדומיין</span><span class="val" id="t-clicks"></span><span class="sub"><span class="chip" id="c-clicks"></span><span id="p-clicks"></span></span></div>
-      <div class="tile"><span class="lbl">חשיפות בגוגל · כל הדומיין</span><span class="val" id="t-impr"></span><span class="sub"><span class="chip" id="c-impr"></span><span id="p-impr"></span></span></div>
+      <div class="tile"><span class="lbl" id="t-clicks-lbl">קליקים מגוגל</span><span class="val" id="t-clicks"></span><span class="sub"><span class="chip" id="c-clicks"></span><span id="p-clicks"></span></span></div>
+      <div class="tile"><span class="lbl" id="t-impr-lbl">חשיפות בגוגל</span><span class="val" id="t-impr"></span><span class="sub"><span class="chip" id="c-impr"></span><span id="p-impr"></span></span></div>
       <div class="tile"><span class="lbl">שיעור הקלקה (CTR)</span><span class="val" id="t-ctr"></span><span class="sub"><span class="chip" id="c-ctr"></span><span id="p-ctr"></span></span></div>
       <div class="tile"><span class="lbl">מיקום ממוצע בתוצאות</span><span class="val" id="t-pos"></span><span class="sub"><span class="chip" id="c-pos"></span><span id="p-pos"></span></span></div>
-      <div class="tile"><span class="lbl">קליקים מגוגל · אתר אנגלית</span><span class="val" id="t-en"></span><span class="sub"><span class="chip" id="c-en"></span><span id="p-en"></span></span></div>
+      <div class="tile"><span class="lbl">חלק מכלל הקליקים בדומיין</span><span class="val" id="t-en"></span><span class="sub"><span id="p-en"></span></span></div>
     </div>
     <div class="grid">
-      <div class="card"><h3>קליקים מגוגל · כל הדומיין</h3><span class="cnote" id="main-chart-note"></span><div class="chart" id="main-chart"></div></div>
-      <div class="card"><h3>קליקים מגוגל · אתר אנגלית (/en)</h3><span class="cnote" id="en-chart-note"></span><div class="chart" id="en-chart"></div></div>
+      <div class="card"><h3 id="main-chart-title">קליקים מגוגל</h3><span class="cnote" id="main-chart-note"></span><div class="chart" id="main-chart"></div></div>
+      <div class="card"><h3 id="en-chart-title">חשיפות בגוגל</h3><span class="cnote" id="en-chart-note"></span><div class="chart" id="en-chart"></div></div>
     </div>
     <div class="grid">
       <div class="card">
@@ -98,21 +104,21 @@
   </section>
 
   <section class="sec" id="sites">
-    <div class="sechead"><h2>אתרי הרשות</h2><span class="src live" id="sites-q-label"></span></div>
+    <div class="sechead"><h2 id="sites-title">תנועה לאתר</h2><span class="src live" id="sites-q-label"></span></div>
     <p>מבקרים ייחודיים (משתמשים), סשנים וזמן שהייה ממוצע לסשן, לפי הרבעון או החודש שנבחרו, בהשוואה לתקופה הקודמת (רבעון לרבעון, חודש לחודש).</p>
     <div class="tiles" id="site-tiles"></div>
     <div class="card">
-      <h3>השוואה רבעונית: סשנים ומשתמשים</h3>
+      <h3>השוואה רבעונית</h3>
       <span class="cnote" id="sites-table-note">רבעון 3 2026 ורבעון 3 2025: 1.7–29.8 בלבד.</span>
-      <div class="scroll"><table id="sites-table"><thead><tr><th>אתר</th><th class="num q3">סשנים Q3 26</th><th class="num q3">משתמשים Q3 26</th><th class="num">סשנים Q2 26</th><th class="num">משתמשים Q2 26</th><th class="num">סשנים Q1 26</th><th class="num">משתמשים Q1 26</th><th class="num">סשנים Q3 25</th><th class="num">משתמשים Q3 25</th></tr></thead><tbody></tbody></table></div>
+      <div class="scroll"><table id="sites-table"><thead><tr><th>מדד</th></tr></thead><tbody></tbody></table></div>
     </div>
     <div class="grid">
       <div class="card">
-        <h3>זמן שהייה ממוצע לסשן</h3><span class="cnote">דקות:שניות. ממוצע השוק נע סביב 1:30–3:00.</span>
-        <div class="scroll"><table id="dur-table"><thead><tr><th>אתר</th><th class="num q3">Q3 26</th><th class="num">Q2 26</th><th class="num">Q1 26</th><th class="num">Q3 25</th></tr></thead><tbody></tbody></table></div>
+        <h3>לפי חודש</h3><span class="cnote">החודשים האחרונים. זמן שהייה בדקות:שניות; ממוצע השוק נע סביב 1:30–3:00.</span>
+        <div class="scroll"><table id="dur-table"><thead><tr><th>חודש</th></tr></thead><tbody></tbody></table></div>
       </div>
       <div class="card">
-        <h3>אתר עברית: משתמשים לפי רבעון</h3><span class="cnote">ב־2025 נכללה תנועת ניוזלטר ולא היה באנר עוגיות, ולכן 2025 אינה בת השוואה ישירה.</span>
+        <h3 id="users-chart-title">משתמשים לפי רבעון</h3><span class="cnote">ב־2025 נכללה תנועת ניוזלטר ולא היה באנר עוגיות, ולכן 2025 אינה בת השוואה ישירה.</span>
         <div class="chart" id="he-users-chart"></div>
       </div>
     </div>
@@ -121,7 +127,8 @@
 
   <section class="sec" id="ai">
     <div class="sechead"><h2>תנועה מכלי בינה מלאכותית</h2><span class="src live" id="ai-q-label"></span></div>
-    <p>כל הכניסות לאתר הראשי שמקורן בכלי AI, גם כאלה שגוגל אנליטיקס סיווג כ"הפניה" (Referral). ההשוואה לפי ממוצע יומי, כי מספר ימי המדידה משתנה בין תקופות.</p>
+    <p><span id="ai-intro">כל הכניסות לאתר שמקורן בכלי AI</span>, גם כאלה שגוגל אנליטיקס סיווג כ"הפניה" (Referral). ההשוואה לפי ממוצע יומי, כי מספר ימי המדידה משתנה בין תקופות.</p>
+    <p class="note" id="ai-empty" hidden>לאתר זה אין נתוני תנועה מכלי AI בתקופה שנבחרה.</p>
     <div class="tiles" id="ai-tiles"></div>
     <div class="card">
       <h3>כניסות לפי כלי AI</h3>
@@ -132,10 +139,8 @@
 
   <section class="sec" id="pages">
     <div class="sechead"><h2>דפים נצפים ביותר</h2><span class="src live" id="pages-q-label"></span></div>
-    <div class="grid">
-      <div class="card"><h3>אתר עברית</h3><div class="scroll"><table id="pages-he"><thead><tr><th class="num">#</th><th>שם הדף</th><th class="num">צפיות</th><th class="num">משתמשים</th></tr></thead><tbody></tbody></table></div></div>
-      <div class="card"><h3>אתר אנגלית</h3><div class="scroll"><table id="pages-en"><thead><tr><th class="num">#</th><th>כתובת</th><th class="num">צפיות</th><th class="num">משתמשים</th></tr></thead><tbody></tbody></table></div></div>
-    </div>
+    <div class="card" id="pages-he-card"><h3>אתר עברית</h3><div class="scroll"><table id="pages-he"><thead><tr><th class="num">#</th><th>שם הדף</th><th class="num">צפיות</th><th class="num">משתמשים</th></tr></thead><tbody></tbody></table></div></div>
+    <div class="card" id="pages-en-card" hidden><h3>אתר אנגלית</h3><div class="scroll"><table id="pages-en"><thead><tr><th class="num">#</th><th>כתובת</th><th class="num">צפיות</th><th class="num">משתמשים</th></tr></thead><tbody></tbody></table></div></div>
   </section>
 
   <section class="sec" id="winners">
