@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: '0 4 * * *'   # every day at 04:00 UTC (06:00–07:00 in Israel)
   workflow_dispatch:       # "Run workflow" button for a manual refresh
+  push:                    # also run when the refresh code or its settings change
+    branches: [main]
+    paths:
+      - 'scripts/**'
+      - '.github/workflows/refresh.yml'
 
 permissions:
   contents: write
